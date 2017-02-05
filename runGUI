@@ -1,0 +1,11 @@
+#!/bin/bash
+# Run client
+echo -e "\n  This launches the GUI for the octav analysis script."
+echo -e "  If this isn't loading, re-plug the spectrometer and DAQ."
+echo -e "  When closed unexpectedly, this script can break. If this happens, close and re-open the script.\n\n"
+
+python "${PWD}/Optrode_Version4.2.py"
+
+# Keep terminal open after closing microscope
+$SHELL
+
