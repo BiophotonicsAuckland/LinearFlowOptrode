@@ -5,35 +5,21 @@ This code runs the Optrode version 2
 @author: Yaqub Jonmohamadi
 """
 
-import matplotlib
-import socket
-import subprocess
-import time
-import struct
-import os
-import sys
-import tempfile
-import glob
-import datetime
-import time
-import bisect
+import matplotlib, socket, subprocess, time, struct, os, sys, tempfile, glob, datetime, time, bisect, h5py, os.path
+
 from multiprocessing import Process, Value, Array
 from Tkinter import *
 from ttk import Button, Style, Label, Entry, Notebook, Scale
 from tkFileDialog import askopenfilename
 from PIL import Image, ImageTk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+from matplotlib.figure import Figure
 
-import h5py
 import DAQT7_Objective as DAQ
 import SeaBreeze_Objective as SBO
 import ThorlabsPM100_Objective as P100
 import numpy as np
 import matplotlib.pyplot as plt
-import os.path
-
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.figure import Figure
-
 import matplotlib.animation as animation
 
 #%%
@@ -294,7 +280,7 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
 
             Full_Spec_Records[:, np.int(Spec_Index[0]) - 1] = Current_Spec_Record[:]
         '''
-    DAQ1.writePort(Shutter_Port, 0)
+    
 
     while (int(Spec_Index[0]) < No_Spec_Sample  ):
         '''
@@ -304,7 +290,7 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
         '''
         DAQ_Signal[DAQ_Index[0]], DAQ_Time[DAQ_Index[0]] = DAQ1.readPort(PhotoDiod_Port)
         DAQ_Index[0] = DAQ_Index[0] + 1
-
+	#DAQ1.writePort(Shutter_Port, 0)
     if (Power_meter.Error == 0):
         Pros_Power.terminate()
 
