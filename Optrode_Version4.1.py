@@ -477,8 +477,9 @@ def Perform_Test():
         # Wait for button press
         but_start.config(state=NORMAL)
         debug("Ready to start paradigm. Press start to begin.")
-        but_setup.wait_variable(wait_var)
-        but_setup.config(state=DISABLED)
+		while wait_var.get() != 0:
+        	but_setup.wait_variable(wait_var)
+        but_start.config(state=DISABLED)
 
         # Starting the chosen paradigm
         if (par_mode.get() == 'm'):
@@ -503,10 +504,10 @@ def Perform_Test():
         #Path_to_Records = os.path.abspath(os.path.join( os.getcwd())) + "/Records"
         os.chdir(Path_to_Records)
         if is_suff.get() == 1:
-            File_name_Suffix = str('%s' %datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S'))+ ".hdf5"
-            File_name = File_name_PreFix + '-' + File_name_Suffix
+            File_name_Suffix = str('%s' %datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S'))
+            File_name = File_name_PreFix + '-' + File_name_Suffix + ".hdf5"
         else:
-            File_name = File_name_PreFix
+            File_name = File_name_PreFix + ".hdf5"
         f = h5py.File(File_name, "w")
 
         # Saving the recorded signals in HDF5 format
@@ -745,7 +746,9 @@ def Update_Data(self):
 
 	if x >= 170:
 		plot1.axes.set_xlim(x-170, x+30)
-	plot2.axes.set_ylim(1.2*np.amin(specData), 1.2*np.amax(specData))
+	minVal = np.amin(specData)
+	maxVal = np.amax(specData)
+	plot2.axes.set_ylim(0.9*minVal - 0.1*maxVal, 0.1*minVal + 1.1*maxVal)
 
 	return plot1, plot2
 
