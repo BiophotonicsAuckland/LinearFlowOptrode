@@ -357,7 +357,7 @@ def Begin_Test():
 
         # If no errors, then start the test after 10ms, to allow UI time to update
         debug("SETTING UP...")
-        but1.config(state=DISABLED)
+        but_start.config(state=DISABLED)
         Disable_UI(root)
         root.after(10, Perform_Test)
 
@@ -475,10 +475,10 @@ def Perform_Test():
             Power_Index  = Array('i', np.zeros(shape=( 1 ,1), dtype = int ))
 
         # Wait for button press
-        but2.config(state=NORMAL)
+        but_start.config(state=NORMAL)
         debug("Ready to start paradigm. Press start to begin.")
-        but2.wait_variable(wait_var)
-        but2.config(state=DISABLED)
+        but_setup.wait_variable(wait_var)
+        but_setup.config(state=DISABLED)
 
         # Starting the chosen paradigm
         if (par_mode.get() == 'm'):
@@ -598,16 +598,16 @@ def Perform_Test():
         print('Data is saved. \n')
 
         # Wait for button press
-        but3.config(state=NORMAL)
-        but4.config(state=NORMAL)
+        but_rerun.config(state=NORMAL)
+        but_change.config(state=NORMAL)
         debug("Re-run test with same parameters, change parameters, or quit.")
-        but3.wait_variable(wait_var)
-        but3.config(state=DISABLED)
-        but4.config(state=DISABLED)
+        but_rerun.wait_variable(wait_var)
+        but_rerun.config(state=DISABLED)
+        but_change.config(state=DISABLED)
 
         # If we clicked the 'change' button, quit loop, otherwise keep going.
         if wait_var.get() == 2:
-            but1.config(state=NORMAL)
+            but_setup.config(state=NORMAL)
             Disable_UI(root, False)
             break
 
@@ -721,7 +721,7 @@ def Align():
 
 def Update_Data(self):
 	if stop_anim.get() == "True":
-		print "HI"
+		#print "HI"
 
 		anim.event_source.stop()
 		#plt.close(0)
@@ -767,9 +767,8 @@ def debug(msg):
     error_msg.set(msg)
 
 def stop_animation(event):
-	print "hi"
+	#print "hi"
 	stop_anim.set("True")
-
 
 def is_number(s):
     try:
@@ -929,31 +928,31 @@ if __name__ == "__main__":
 	frame8 = Frame(root)
 	frame8.grid(row=5, column=0)
 
-	but1 = Button(frame6, text="Setup Test", command=Begin_Test)
-	but1.grid(row=1, column=1, padx=10, pady=10)
-	but2 = Button(frame6, text="Start Test", command=lambda: wait_var.set(0), state=DISABLED)
-	but2.grid(row=1, column=2, padx=10, pady=10)
+	but_setup = Button(frame6, text="Setup Test", command=Begin_Test)
+	but_setup.grid(row=1, column=1, padx=10, pady=10)
+	but_start = Button(frame6, text="Start Test", command=lambda: wait_var.set(0), state=DISABLED)
+	but_start.grid(row=1, column=2, padx=10, pady=10)
 	box2 = Checkbutton(frame6, text="Auto-Flow", variable=auto_flow)
 	box2.grid(row=1, column=3, pady=10, sticky=W)
 
-	but3 = Button(frame6, text="Start Flow", state=DISABLED)
-	but3.grid(row=2, column=1, padx=10, pady=10)
-	but4 = Button(frame6, text="Stop Flow", state=DISABLED)
-	but4.grid(row=2, column=2, padx=10, pady=10)
+	but_sflow = Button(frame6, text="Start Flow", state=DISABLED)
+	but_sflow.grid(row=2, column=1, padx=10, pady=10)
+	but_eflow = Button(frame6, text="Stop Flow", state=DISABLED)
+	but_eflow.grid(row=2, column=2, padx=10, pady=10)
 
-	but5 = Button(frame6, text="Re-run", command=lambda: wait_var.set(1), state=DISABLED)
-	but5.grid(row=3, column=1, padx=10, pady=10)
-	but6 = Button(frame6, text="Change", command=lambda: wait_var.set(2), state=DISABLED)
-	but6.grid(row=3, column=2, padx=10, pady=10)
+	but_rerun = Button(frame6, text="Re-run", command=lambda: wait_var.set(1), state=DISABLED)
+	but_rerun.grid(row=3, column=1, padx=10, pady=10)
+	but_change = Button(frame6, text="Change", command=lambda: wait_var.set(2), state=DISABLED)
+	but_change.grid(row=3, column=2, padx=10, pady=10)
 
-	but7 = Button(frame6, text="Help", command=Help_GUI)
-	but7.grid(row=4, column=1, padx=10, pady=10)
-	but8 = Button(frame6, text="Align", command=Align)
-	but8.grid(row=4, column=2, padx=10, pady=10)
+	but_help = Button(frame6, text="Help", command=Help_GUI)
+	but_help.grid(row=4, column=1, padx=10, pady=10)
+	but_align = Button(frame6, text="Align", command=Align)
+	but_align.grid(row=4, column=2, padx=10, pady=10)
 	box3 = Checkbutton(frame6, text="Blit", variable=use_blit)
 	box3.grid(row=4, column=3, pady=10, sticky=W)
 
-	but9 = Button(frame6, text="Close", command=Close_GUI)
-	but9.grid(row=5, column=1, padx=10, pady=10, columnspan=2)
+	but_close = Button(frame6, text="Close", command=Close_GUI)
+	but_close.grid(row=5, column=1, padx=10, pady=10, columnspan=2)
 
 	root.mainloop()
