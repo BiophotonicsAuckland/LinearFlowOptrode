@@ -51,7 +51,7 @@ PhotoDiod_Port = "AIN1"
 #Spectrometer_Trigger_Port = "DAC1"
 
 
-Pradigm = 'm'       # Pardigm refers to the continious or multi-integration performance of the Optrode ==> c: continious, and m: multi-integration recording
+Pradigm = 'm' # Pardigm refers to the continious or multi-integration performance of the Optrode ==> c: continious, and m: multi-integration recording
 
 def DAQ_Read_Process(No_DAC_Sample):
     '''
@@ -357,7 +357,7 @@ def Begin_Test():
 
         # If no errors, then start the test after 10ms, to allow UI time to update
         debug("SETTING UP...")
-        but_start.config(state=DISABLED)
+        but_setup.config(state=DISABLED)
         Disable_UI(root)
         root.after(10, Perform_Test)
 
@@ -474,12 +474,21 @@ def Perform_Test():
             Power_Time   = Array('d', np.zeros(shape=( No_Power_Sample ,1), dtype = float ))
             Power_Index  = Array('i', np.zeros(shape=( 1 ,1), dtype = int ))
 
-        # Wait for button press
+
+        ##### Finished Setup
+        ##### Waiting for button press
         but_start.config(state=NORMAL)
+        if auto_flow.get() == 0:
+            but_sflow.config(state=NORMAL)
+
         debug("Ready to start paradigm. Press start to begin.")
-		while wait_var.get() != 0:
-        	but_setup.wait_variable(wait_var)
+        but_setup.wait_variable(wait_var)
+
         but_start.config(state=DISABLED)
+        but_sflow.config(state=DISABLED)
+        if auto_flow.get() == 1:
+            pass # start_flow()
+
 
         # Starting the chosen paradigm
         if (par_mode.get() == 'm'):
@@ -492,12 +501,10 @@ def Perform_Test():
         for I in range(Spec_Index[0]):
             Full_Spec_Records[:, I] =  Full_Spec_Records2[I*Wave_len : (I + 1)*Wave_len ]
 
-
         # Closing the devices
         Spec_Details = Spec1.readDetails()
         DAQ_Details = DAQ1.getDetails()
         DAQ1.writePort(Shutter_Port, 0)
-
 
         # ########### The file containing the records (HDF5 format)###########
         #Path_to_Records = os.path.abspath(os.path.join( os.getcwd(), os.pardir)) + "/Records"
@@ -601,15 +608,19 @@ def Perform_Test():
         # Wait for button press
         but_rerun.config(state=NORMAL)
         but_change.config(state=NORMAL)
+        if auto_flow.get() == 0:
+            but_eflow.config(state=NORMAL)
         debug("Re-run test with same parameters, change parameters, or quit.")
         but_rerun.wait_variable(wait_var)
         but_rerun.config(state=DISABLED)
         but_change.config(state=DISABLED)
+        but_eflow.config(state=DISABLED)
 
         # If we clicked the 'change' button, quit loop, otherwise keep going.
         if wait_var.get() == 2:
             but_setup.config(state=NORMAL)
             Disable_UI(root, False)
+            debug(" ")
             break
 
 def Close_GUI():
@@ -640,15 +651,15 @@ def Help_GUI():
 		Message(root.help_window, width=w, font=(None, 11), text="Press align to open live read of data to help calibrate setup.")														.grid(row=3, column=1, sticky=W)
 		Message(root.help_window, width=w, font=(None, 11), text="After data collection is complete, press re-run to run test with same parameters, or change to change parameters.")	.grid(row=4, column=1, sticky=W)
 		Message(root.help_window, width=w, font=(None, 11), text="Checking extension checkbox adds a time tag to end of filename.")														.grid(row=5, column=1, sticky=W)
-		Message(root.help_window, width=w, font=(None, 11), text="Checking blit checkbox makes the alignment animations run more smoothly but means axis values will be incorrect.")				.grid(row=6, column=1, sticky=W)
+		Message(root.help_window, width=w, font=(None, 11), text="Checking blit checkbox makes the alignment animations run more smoothly but means axis values will be incorrect.")	.grid(row=6, column=1, sticky=W)
 
 	else:
 		root.help_window.focus_set()
 
 def Update_Spec_Line(num, data, line):
-    line.set_data(Spec1.Handle.Wavelengths(), Spec1.readIntensity(True, True)[0])
-    lim = l.set_xlim(np.amin(data), np.amax(data))
-    return line,l
+	line.set_data(Spec1.Handle.Wavelengths(), Spec1.readIntensity(True, True)[0])
+	lim = l.set_xlim(np.amin(data), np.amax(data))
+	return line,l
 
 def Align():
 	'''
@@ -656,8 +667,6 @@ def Align():
 	'''
 
 	#DISABLE UI
-
-	stop_anim.set("False")
 
 	Spec1.setTriggerMode(0)
 	Spec1.setIntegrationTime(40000)
@@ -670,7 +679,7 @@ def Align():
 	# Setup figure and subplots
 	fig = plt.figure(num=0, figsize = (12, 8))
 	fig.suptitle("Live Data for Alignment", fontsize=12)
-	fig.canvas.mpl_connect('button_press_event', stop_animation)
+	fig.canvas.mpl_connect('close_event', stop_animation)
 	ax01 = plt.subplot2grid((2, 1), (0, 0))
 	ax02 = plt.subplot2grid((2, 1), (1, 0))
 
@@ -718,14 +727,7 @@ def Align():
 	anim = animation.FuncAnimation(fig, Update_Data, blit=use_blit.get(), interval=20, repeat=False)
 	plt.show()
 
-	#Rerun = raw_input("Press any key to continue...")
-
 def Update_Data(self):
-	if stop_anim.get() == "True":
-		#print "HI"
-
-		anim.event_source.stop()
-		#plt.close(0)
 
 	global DAQdata
 	global PDdata
@@ -766,19 +768,18 @@ def Disable_UI(parent, disable=True):
             Disable_UI(w, disable)
 
 def debug(msg):
-    print(msg)
-    error_msg.set(msg)
+	print(msg)
+	error_msg.set(msg)
 
 def stop_animation(event):
-	#print "hi"
-	stop_anim.set("True")
+	anim.event_source.stop()
 
 def is_number(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+	try:
+		float(s)
+		return True
+	except ValueError:
+		return False
 
 if __name__ == "__main__":
 
@@ -807,16 +808,13 @@ if __name__ == "__main__":
 	plots = []                          # Booleans on whether or not to plot each plot after collecting data
 	for i in range(no_of_plots):
 		plots.append(IntVar())
-	use_blit = StringVar(value=1)       # Boolean on whether or not to use blit in alignment animation
-	auto_flow = StringVar(value=1)      # Boolean on whether or not start and stop flow automatically during tests
+	use_blit = IntVar(value=1)			# Boolean on whether or not to use blit in alignment animation
+	auto_flow = IntVar(value=1)			# Boolean on whether or not start and stop flow automatically during tests
 
 	error_msg = StringVar(value=" ")    # Variable that stores the error message displayed on GUI
 	wait_var = IntVar(value=0)          # Variable used to keep GUI waiting for user input during tests
 
 	root.help_window = None
-
-	stop_anim = StringVar(value="False")
-	root.bind("<Button-1>", stop_animation)
 
 	small_entry = 6
 	large_entry = 19
@@ -926,10 +924,6 @@ if __name__ == "__main__":
 	# Button frames
 	frame6 = Frame(root)
 	frame6.grid(row=3, column=0)
-	frame7 = Frame(root)
-	frame7.grid(row=4, column=0)
-	frame8 = Frame(root)
-	frame8.grid(row=5, column=0)
 
 	but_setup = Button(frame6, text="Setup Test", command=Begin_Test)
 	but_setup.grid(row=1, column=1, padx=10, pady=10)
