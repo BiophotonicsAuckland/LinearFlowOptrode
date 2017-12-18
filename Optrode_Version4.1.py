@@ -18,7 +18,7 @@ import datetime
 import time
 import bisect
 from multiprocessing import Process, Value, Array
-from Tkinter import *#Tk, Text, BOTH, W, N, E, S, RAISED, Frame, Message, LEFT, TOP, BOTTOM, DISABLED, NORMAL, PhotoImage, StringVar, Toplevel
+from Tkinter import *
 from ttk import Button, Style, Label, Entry, Notebook, Scale
 from tkFileDialog import askopenfilename
 from PIL import Image, ImageTk
@@ -398,7 +398,7 @@ def Perform_Test():
     DAQ_SamplingRate = DAQ_Speed_Test(No_DAQ_Tests)*1000            #Shows the sampling speed in ms
 
     global Wavelengths, Min_Wave_Index, Max_Wave_Index, Full_Spec_Records2, Spec_Time, Spec_Index
-    Wavelengths = Spec1.Handle.Wavelengths()
+    Wavelengths = Spec1.readWavelength()
     Min_Wave_Index = max(bisect.bisect(Wavelengths, float(min_len.get())-1), 0)
     Max_Wave_Index = bisect.bisect(Wavelengths, float(max_len.get()))
     Wavelengths = Wavelengths[Min_Wave_Index:Max_Wave_Index]
@@ -788,7 +788,7 @@ if __name__ == "__main__":
 	root = Tk()
 	root.title("Linear Flow Fluorescence")
 	root.protocol("WM_DELETE_WINDOW", Close_GUI)
-	root.geometry("380x450+150+150")
+	root.geometry("380x580+150+100")
 	root.grid_columnconfigure(0, weight=1)
 
 	# Setting variables
@@ -806,6 +806,7 @@ if __name__ == "__main__":
 	for i in range(no_of_plots):
 		plots.append(IntVar())
 	use_blit = StringVar(value=1)       # Boolean on whether or not to use blit in alignment animation
+	auto_flow = StringVar(value=1)      # Boolean on whether or not start and stop flow automatically during tests
 
 	error_msg = StringVar(value=" ")    # Variable that stores the error message displayed on GUI
 	wait_var = IntVar(value=0)          # Variable used to keep GUI waiting for user input during tests
@@ -928,23 +929,31 @@ if __name__ == "__main__":
 	frame8 = Frame(root)
 	frame8.grid(row=5, column=0)
 
-	but1 = Button(frame6, text="Setup", command=Begin_Test)
+	but1 = Button(frame6, text="Setup Test", command=Begin_Test)
 	but1.grid(row=1, column=1, padx=10, pady=10)
-	but2 = Button(frame6, text="Start", command=lambda: wait_var.set(0), state=DISABLED)
+	but2 = Button(frame6, text="Start Test", command=lambda: wait_var.set(0), state=DISABLED)
 	but2.grid(row=1, column=2, padx=10, pady=10)
-	but3 = Button(frame6, text="Align", command=Align)
-	but3.grid(row=1, column=3, padx=10, pady=10)
-	box2 = Checkbutton(frame6, text="Blit", variable=use_blit)
-	box2.grid(row=1, column=4, pady=10)
+	box2 = Checkbutton(frame6, text="Auto-Flow", variable=auto_flow)
+	box2.grid(row=1, column=3, pady=10, sticky=W)
 
-	but4 = Button(frame7, text="Re-run", command=lambda: wait_var.set(1), state=DISABLED)
-	but4.grid(row=1, column=1, padx=10, pady=10)
-	but5 = Button(frame7, text="Change", command=lambda: wait_var.set(2), state=DISABLED)
-	but5.grid(row=1, column=2, padx=10, pady=10)
+	but3 = Button(frame6, text="Start Flow", state=DISABLED)
+	but3.grid(row=2, column=1, padx=10, pady=10)
+	but4 = Button(frame6, text="Stop Flow", state=DISABLED)
+	but4.grid(row=2, column=2, padx=10, pady=10)
 
-	but6 = Button(frame8, text="Help", command=Help_GUI)
-	but6.grid(row=1, column=1, padx=10, pady=10)
-	but7 = Button(frame8, text="Close", command=Close_GUI)
-	but7.grid(row=1, column=2, padx=10, pady=10)
+	but5 = Button(frame6, text="Re-run", command=lambda: wait_var.set(1), state=DISABLED)
+	but5.grid(row=3, column=1, padx=10, pady=10)
+	but6 = Button(frame6, text="Change", command=lambda: wait_var.set(2), state=DISABLED)
+	but6.grid(row=3, column=2, padx=10, pady=10)
+
+	but7 = Button(frame6, text="Help", command=Help_GUI)
+	but7.grid(row=4, column=1, padx=10, pady=10)
+	but8 = Button(frame6, text="Align", command=Align)
+	but8.grid(row=4, column=2, padx=10, pady=10)
+	box3 = Checkbutton(frame6, text="Blit", variable=use_blit)
+	box3.grid(row=4, column=3, pady=10, sticky=W)
+
+	but9 = Button(frame6, text="Close", command=Close_GUI)
+	but9.grid(row=5, column=1, padx=10, pady=10, columnspan=2)
 
 	root.mainloop()
