@@ -12,6 +12,7 @@ This program can measure spectra at specified integration time for specified rec
 ## Data_process.py
 This script processes a series of hdf5 files produced from optrodev4, takes in a background hdf5 file and a series of experiment data to plot spectra, calculate background avg, subtract, replot and also plotting fluorenscence over time.
 
-## Fix Shutter
-This script just forces the shutter to close in the case the program leaves the shutter open after closing/crashing.
+## Shutter.py
+This script lets you just open/close the shutter for power measurements or photobleaching.
+
 
