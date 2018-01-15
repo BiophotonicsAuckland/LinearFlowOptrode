@@ -5,7 +5,7 @@ It assumes that the background file and the sample file have the same recording 
 As a result their intensitiy matrices are of the same shape and allow for background subtraction. If they do not meet this requirement the program will crash.
 
 Currently the user has to manually enter file names in the files array below, and specify the background file name in back_name.
-(this could be changed for a automatic file searching system)
+(this could be changed for an automatic file searching system)
 
 Integration is done over 495 to 560nm. This can be modified in the code.
 The temporal plots assume an integration time with the int_time var (in seconds) below and must be overwritten with the correct value for correct plotting.
@@ -17,25 +17,23 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simps
 import bisect
 
-
-
-INT_TIME = 0.2 #Integration time in seconds, over write this if using a different value, otherwise plot will be inaccurate.
+INT_TIME = 0.15 #Integration time in seconds, over write this if using a different value, otherwise plot will be inaccurate.
 INTEGRATE_RANGE= (495,560)#Range of wavelength to be integrated over e.g.495-560 nm
 PLOT_RANGE = (450,650)#Range of wavelengths to plot in the fluorescent spectra and corrected plot, used to omit any outliers.
+THRESHOLD = 1000
+files = ["10to4-4","10to4-5","10to4-6"] #Array contains name of each fluorescent recording file
+file_dir = "./Records/2um/" #Directory the above files are contained
 
-files = ["test-1"] #Array contains name of each fluorescent recording file
-file_dir = "./Records/realigned/" #Directory the above files are contained
-
-back_name = "back-1" #Name of the background recording file, assumed that it is in the same directory as file_dir
+back_name = "back-5" #Name of the background recording file, assumed that it is in the same directory as file_dir
 
 plt.ioff()#Plots are not displayed when they're created. (Prevents program from pausing)
 print("running")
 
 def err_dec(f):
     """This is an error decorator, errors are handled here."""
-    def decorator(f_name):
+    def decorator(f_name,*args):
         try:
-            f(f_name)
+            return f(f_name,*args)
         except IOError as e:
             print("Error!\n Error Information: "+str(e))
     return decorator
@@ -54,7 +52,7 @@ def background_averaging(f_name):
 
     plt.figure(0)
     plt.clf()
-
+    plt.grid()
     for integration in back_intense.T:#Adding each spectra ontop of each other
         avg_intense+=integration
 
@@ -72,9 +70,10 @@ def background_averaging(f_name):
     return avg_intense
 
 @err_dec
-def analysis(file_name):
+def analysis(file_name,avg_intense):
     """This function processes fluorescent recording files,
         it is parsed the file name of the file to be processed """
+      
     run = h5py.File(file_dir+file_name+".hdf5","r")
     spec = run["Spectrometer"]
     intense = np.array(spec["Intensities"])
@@ -85,6 +84,7 @@ def analysis(file_name):
     #Plotting Emission Spec
     plt.figure(1)
     plt.clf()
+    plt.grid()
     plt.plot(wave[plot_index[0]:plot_index[1]],intense[plot_index[0]:plot_index[1]])
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity (arb.u)")
@@ -104,6 +104,7 @@ def analysis(file_name):
 
     plt.figure(2)
     plt.clf()
+    plt.grid()
     plt.plot(wave[plot_index[0]:plot_index[1]],cor_intense[plot_index[0]:plot_index[1]])
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity (arb.u)")
@@ -126,15 +127,25 @@ def analysis(file_name):
 
     plt.figure(3)
     plt.clf()
+    plt.grid()
 
-    plt.plot(time_axis,areas)
+    plt.plot(time_axis,areas,color="g")
+    plt.plot(time_axis,np.full((len(time_axis),1),THRESHOLD),color="r")
     plt.title("Fluorenscence over time"+file_name)
     plt.xlabel("Time (s)")
     plt.ylabel("Fluorescence Intensity Arbitary Units")
     plt.savefig(file_dir+"over_time_spec_"+file_name+".png",format="png")
-
     print("Integration complete and second plot complete")
+    ######### SPIKE/PEAK COUNTING OF FLUORESCENCE OVER TIME ############
+    
+    peaks = 0
+    for i in areas:
+        if i >THRESHOLD:
+            peaks+=1
+    print("Peak counting complete\nPeaks Counted: "+str(peaks))
+   
 
-avg_intense = background_averaging(back_name)
+back_avg = background_averaging(back_name)
+
 for file_name in files:#Calls analysis for each file to process
-    analysis(file_name)
+    analysis(file_name,back_avg)
