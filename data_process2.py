@@ -15,7 +15,6 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simps
 from time import gmtime, strftime
 
-cur_time = strftime("%H:%M:%S",gmtime())
 
 class Spectra():
 	"""This class represents a given spectra recording and contains functionality for computing and plotting particular data"""
@@ -88,24 +87,38 @@ class backgroundSpectra(Spectra):
 		avg_intense/=self.intense.shape[1]
 		return avg_intense
 useOld = False
+print(strftime("%H:%M:%S",gmtime())+" - Processing background data")
 if useOld:
 	back = cPickle.load (open("background_data.sp","rb"))
 else:
 	back = backgroundSpectra("background-1")
 	cPickle.dump(back, open( "background_data.sp", "wb" ))
-dataFiles = ["10to1-1","10to1-2","10to1-3"]
+dataFiles = ["10to1-3"]
 specList = []
 peakString = ""
 for file in dataFiles:#Create list of spectra objects
 	specList.append(Spectra(file,back.avg_intense))
+print(strftime("%H:%M:%S",gmtime())+" - Loaded data files")
 
 for spec in specList:#Plotting and computation calls here
+	print(strftime("%H:%M:%S",gmtime())+" - Beginning with "+spec.name)
+
 	spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intesnity (arb.u)","Emission Spectra "+spec.name,False)
+	print(strftime("%H:%M:%S",gmtime())+" - Plotting raw spectra")
+
 	spec.subtract()
+	print(strftime("%H:%M:%S",gmtime())+" - Subtracting background")
+
 	spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name,False)	
+	print(strftime("%H:%M:%S",gmtime())+" - Plotting corrected spectra")
+
 	peak = spec.integration()
+	print(strftime("%H:%M:%S",gmtime())+" - Integrated spectra and counted peaks")
+
 	print("Peaks for "+spec.name+": "+str(peak))
 	peakString+=spec.name+": "+str(peak)+"\n"
 	spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescnece over time "+spec.name,True)
-with open("peakData.txt") as f:
+	print(strftime("%H:%M:%S",gmtime())+" - Finished with "+spec.name)
+
+with open("peakData.txt","w") as f:
 	f.write(peakString)
