@@ -9,7 +9,7 @@ The temporal plots assume an integration time with the int_time var (in seconds)
 This code is a refactoring of the previous data_process.py file written in 2017.
 """
 
-import h5py, bisect
+import h5py, bisect,cPickle
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
@@ -73,8 +73,7 @@ class Spectra():
 		for i in self.areas:
 			if i>self.THRESHOLD:
 				peaks+=1
-		print(self.name+": "+str(peaks)+" peaks")
-
+		return peaks
 class backgroundSpectra(Spectra):
 	"""Extension of spectra class, extending an averaging function that is only needed for background spectra"""
 	def __init__(self,name):
@@ -88,11 +87,15 @@ class backgroundSpectra(Spectra):
 			avg_intense+=integration
 		avg_intense/=self.intense.shape[1]
 		return avg_intense
-
-back = backgroundSpectra("background-1")
+useOld = False
+if useOld:
+	back = cPickle.load (open("background_data.sp","rb"))
+else:
+	back = backgroundSpectra("background-1")
+	cPickle.dump(back, open( "background_data.sp", "wb" ))
 dataFiles = ["10to1-1","10to1-2","10to1-3"]
 specList = []
-
+peakString = ""
 for file in dataFiles:#Create list of spectra objects
 	specList.append(Spectra(file,back.avg_intense))
 
@@ -100,6 +103,9 @@ for spec in specList:#Plotting and computation calls here
 	spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intesnity (arb.u)","Emission Spectra "+spec.name,False)
 	spec.subtract()
 	spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name,False)	
-	spec.integration()
-	spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescnece over time "+self.name,True)
-
+	peak = spec.integration()
+	print("Peaks for "+spec.name+": "+str(peak))
+	peakString+=spec.name+": "+str(peak)+"\n"
+	spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescnece over time "+spec.name,True)
+with open("peakData.txt") as f:
+	f.write(peakString)
