@@ -15,6 +15,9 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simps
 from time import gmtime, strftime
 
+DIRECTORY = "./Records/test-3/"
+
+dataFiles = ["10to4-1","10to4-2","10to4-3"]
 
 class Spectra():
 	"""This class represents a given spectra recording and contains functionality for computing and plotting particular data"""
@@ -23,11 +26,11 @@ class Spectra():
 	INTEGRATE_RANGE = (495,550)
 	PLOT_RANGE = (450,650)
 	THRESHOLD = 220
-	DIRECTORY = "./Records/test-1/"
 
-	def __init__(self,name, *args):
+	def __init__(self,name,dir, *args):
 		"""Open the data file, and assign instance vars"""
 		self.name = name
+		self.DIRECTORY = dir
 		file = self.DIRECTORY+self.name+".hdf5"
 		dataF = h5py.File(file,"r")
 		spec = dataF["Spectrometer"]
@@ -75,8 +78,8 @@ class Spectra():
 		return peaks
 class backgroundSpectra(Spectra):
 	"""Extension of spectra class, extending an averaging function that is only needed for background spectra"""
-	def __init__(self,name):
-		Spectra.__init__(self,name)
+	def __init__(self,name,dir):
+		Spectra.__init__(self,name,dir)
 		self.avg_intense = self.average() 
 
 	def average(self):
@@ -86,39 +89,38 @@ class backgroundSpectra(Spectra):
 			avg_intense+=integration
 		avg_intense/=self.intense.shape[1]
 		return avg_intense
-useOld = False
-print(strftime("%H:%M:%S",gmtime())+" - Processing background data")
-if useOld:
-	back = cPickle.load (open("background_data.sp","rb"))
-else:
-	back = backgroundSpectra("background-1")
-	cPickle.dump(back, open( "background_data.sp", "wb" ))
-dataFiles = ["10to1-3"]
-specList = []
-peakString = ""
-for file in dataFiles:#Create list of spectra objects
-	specList.append(Spectra(file,back.avg_intense))
-print(strftime("%H:%M:%S",gmtime())+" - Loaded data files")
+if __name__ == "__main__":
+	print(strftime("%H:%M:%S",gmtime())+" - Processing background data")
+	back = backgroundSpectra("background-2",DIRECTORY)
 
-for spec in specList:#Plotting and computation calls here
-	print(strftime("%H:%M:%S",gmtime())+" - Beginning with "+spec.name)
+	specList = []
+	peakString = ""
 
-	spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intesnity (arb.u)","Emission Spectra "+spec.name,False)
-	print(strftime("%H:%M:%S",gmtime())+" - Plotting raw spectra")
+	for file in dataFiles:#Create list of spectra objects
+		specList.append(Spectra(file,DIRECTORY,back.avg_intense))
 
-	spec.subtract()
-	print(strftime("%H:%M:%S",gmtime())+" - Subtracting background")
+	print(strftime("%H:%M:%S",gmtime())+" - Loaded data files")
 
-	spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name,False)	
-	print(strftime("%H:%M:%S",gmtime())+" - Plotting corrected spectra")
+	for spec in specList:#Plotting and computation calls here
+		print(strftime("%H:%M:%S",gmtime())+" - Beginning with "+spec.name)
 
-	peak = spec.integration()
-	print(strftime("%H:%M:%S",gmtime())+" - Integrated spectra and counted peaks")
+		spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intesnity (arb.u)","Emission Spectra "+spec.name,False)
+		print(strftime("%H:%M:%S",gmtime())+" - Plotting raw spectra")
 
-	print("Peaks for "+spec.name+": "+str(peak))
-	peakString+=spec.name+": "+str(peak)+"\n"
-	spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescnece over time "+spec.name,True)
-	print(strftime("%H:%M:%S",gmtime())+" - Finished with "+spec.name)
+		spec.subtract()
+		print(strftime("%H:%M:%S",gmtime())+" - Subtracting background")
 
-with open("peakData.txt","w") as f:
-	f.write(peakString)
+		spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name,False)	
+		print(strftime("%H:%M:%S",gmtime())+" - Plotting corrected spectra")
+
+		peak = spec.integration()
+		print(strftime("%H:%M:%S",gmtime())+" - Integrated spectra and counted peaks")
+
+		print("Peaks for "+spec.name+": "+str(peak))
+		peakString+=spec.name+": "+str(peak)+"\n"
+		spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescnece over time "+spec.name,True)
+		print(strftime("%H:%M:%S",gmtime())+" - Finished with "+spec.name)
+
+	with open("peakData.txt","w") as f:# Write the no. peaks to a text file.
+		f.write(peakString)
+	
