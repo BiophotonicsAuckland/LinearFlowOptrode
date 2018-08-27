@@ -9,7 +9,7 @@ The temporal plots assume an integration time with the int_time var (in seconds)
 This code is a refactoring of the previous data_process.py file written in 2017.
 """
 
-import h5py, bisect,cPickle,re
+import h5py, bisect,re
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
@@ -21,6 +21,7 @@ dataFiles = ["10to5-3","10to5-2","10to5-1","10to4-3","10to3-3","10to2-3","10to4-
 shouldPlot = False#Set to false to prevent plots as it is time intensive. 
 REC_LENGTH = 150 #Recording length for each spectra file in seconds
 FLOW_RATE = 0.2/60 #Flow rate of sample in mL/sec
+CONC_VAL = 2.274#Value of the concentration, order of mag is computed from each file
 
 class Spectra():
 	"""This class represents a given spectra recording and contains functionality for computing and plotting particular data"""
@@ -115,14 +116,12 @@ if __name__ == "__main__":
 		return strftime("%H:%M:%S - ",gmtime())+a
 
 	specList = []
-	peakString = [REC_LENGTH,FLOW_RATE]
+	peakData = []
 	"""index legend for peakString array 
-	0 recording lenght
-	1 flow rate
-	2 name
-	3 no. peaks
-	4 sum of peaks
-	5 spec conc
+	0 name
+	1 no. peaks
+	2 sum of peaks
+	3 spec conc
 	"""
 	print(timeStampS("Processing background data"))
 	back = backgroundSpectra(BACKGROUND_FILENAME,DIRECTORY)
@@ -148,7 +147,7 @@ if __name__ == "__main__":
 		print(timeStampS("Integrated spectra and counted peaks"))
 
 		print("Peak Count for "+spec.name+": "+str(len(peak)))
-		peakString.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.		
+		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.		
 	
 		if shouldPlot:#Plotting takes a lot of time
 			print(timeStampS("Plotting raw Spectra"))
@@ -164,26 +163,15 @@ if __name__ == "__main__":
 
 		print(timeStampS("Finished processing "+spec.name+"\n-----------------------------\n\n"))
 			
-	with open(DIRECTORY+"peakData.txt","w") as f:#  Serialise data stored in PeakString and write to file
-		cPickle.dump(peakString,f)
 
 
 	"""Bead Intensity analysis and enumeration """
 
-	DIRECTORY  = "./Records/test-5/"
-	with open(DIRECTORY+"peakData.txt","r") as f:
-        	peakData = cPickle.load(f)
-
-	REC_LENGTH = peakData[0]
-	FLOW_RATE = peakData[1]
-
-
-	initial_conc = 2.274
 	x = []#Contains concentration
-	y = []#Contains intesntiy values measured, x and y must be of the sam$
+	y = []#Contains intesntiy values measured, x and y must be of the same length, parallel arrays
 
-	for specDat in peakData[2:]:
-       		if specDat[3] in x:#If we already have a measurement for this$
+	for specDat in peakData:
+       		if specDat[3] in x:#If we already have a measurement for this concentration avg the values
 			index = x.index(specDat[3])
 			y[index]+=specDat[2]
 			y[index]/=2
@@ -192,23 +180,30 @@ if __name__ == "__main__":
 			y.append(specDat[2])
 
 	x = np.array(x)
-	x= x*initial_conc
+	x= x*CONC_VAL
 
 	cc = np.polyfit(np.log10(x),np.log10(y),1)#Fit the data points
 
 	linspace = np.linspace(2,6,20)#line space for fitted line
-	plt.plot(np.log10(x),np.log10(y),marker=".",linestyle="None")#Plot da$
+	plt.plot(np.log10(x),np.log10(y),marker=".",linestyle="None")#Plot data
 	plt.plot(linspace,cc[0]*linspace+cc[1])#Plot fitted line
 
-	plt.xlabel("Cocentration 10^x beads/ml")
+	plt.xlabel("Cocentration "+str(CONC_VAL)+"x 10^x beads/ml")
 	plt.ylabel("Total intensity measured 10^y arb units")
 	plt.show()
 	plt.savefig("singleIntense.png",format="png")
 	sI = 10**cc[0][0]
-
+	
 	print("Fitted intensity value for 1 bead: ",sI)
 
 	print("\nBeads observed:\nConc : BeadCount : ExpectedBeadCount")
+	f= open(DIRECTORY+"data_output.txt","w+")
+	f.write("Outputted Data for "+DIRECTORY+"\n")
+	f.write("Single Bead Intensity, Fitted value: "+str(sI)+"\n")
+	f.write("Bead Table\nConcentration : Bead Count : Expected Bead Count\n")
 	for i in range(0,len(x)):
-	        print(int(x[i]),int(y[i][0]/sI),int(x[i])*FLOW_RATE*REC_LENGTH)
+		stringToAppend = str(int(x[i]))+"  "+str(int(y[i][0]/sI))+"  "+str(int(int(x[i])*FLOW_RATE*REC_LENGTH)) + "\n"
+		print(stringToAppend)
+		f.write(stringToAppend)
+	f.close()
 
