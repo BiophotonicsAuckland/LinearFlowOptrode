@@ -17,16 +17,18 @@ from time import gmtime, strftime
 
 DIRECTORY = "./Records/test-5/"
 BACKGROUND_FILENAME = "background-1"
-dataFiles = ["10to5-3","10to4-3","10to3-3","10to2-3"]
-shouldPlot = True#Set to false to prevent plots as it is time intensive. 
+dataFiles = ["10to5-3","10to5-2","10to5-1","10to4-3","10to3-3","10to2-3","10to4-2","10to3-2","10to2-2","10to4-1","10to3-1","10to2-1"]
+shouldPlot = False#Set to false to prevent plots as it is time intensive. 
+REC_LENGTH = 150 #Recording length for each spectra file in seconds
+FLOW_RATE = 0.2/60 #Flow rate of sample in mL/sec
 
 class Spectra():
 	"""This class represents a given spectra recording and contains functionality for computing and plotting particular data"""
 	#Constants
-	INT_TIME  = 0.03#Integration time, aka exposure time of spectrometer 
+	INT_TIME  = 0.05#Integration time, aka exposure time of spectrometer 
 	INTEGRATE_RANGE = (495,550) #Wavelength range over which the spectral curves are integrated
 	PLOT_RANGE = (450,650) #Plot a particular range of the dataset
-	THRESHOLD = 220 #Arbitary threshold, deprecated
+	#THRESHOLD = 220 #Arbitary threshold, deprecated
 
 	def __init__(self,name,dir, *args):
 		"""Open the data file, and assign instance vars"""
@@ -48,7 +50,7 @@ class Spectra():
 		self.wave = np.array(spec["WaveLength"])
 		dataF.close()		
 		self.plot_index = (bisect.bisect(self.wave,self.PLOT_RANGE[0]),bisect.bisect(self.wave,self.PLOT_RANGE[1]))
-		
+
 		if args:#if additional arg is given then this file is not a background spectra and has been parsed the average background spectra
 			self.avg_intense = args[0]
 
@@ -65,6 +67,9 @@ class Spectra():
 		plt.plot(x,y)		
 		plt.savefig(self.DIRECTORY+title+self.name+".png",format="png")#may want to move this function call separately.
 	
+	def savePlot(self,fileName):
+		"""Alternative method of saving plot to specified file name """
+		plt.savefig(self.DIRECTORY+fileName+self.name+".png")
 	def subtract(self):
 		""" Subtracts the average intensity of the background spectra from this spectra"""
 		self.sub_intense = np.zeros(self.intense.shape) 
@@ -81,7 +86,7 @@ class Spectra():
 			self.areas[i] = simps(self.sub_intense.T[i][left_indice:right_indice],x=self.wave[left_indice:right_indice])
 		self.time_axis = np.arange(0,self.intense.shape[1])*self.INT_TIME
 		tempThreshold = 3*np.std(self.areas)
-		print(tempThreshold)				
+		print(tempThreshold)
 		peakIntense = []
 		for i in self.areas:
 			if i>tempThreshold:
@@ -90,6 +95,7 @@ class Spectra():
 
 class backgroundSpectra(Spectra):
 	"""Extension of spectra class, extending an averaging function that is only needed for background spectra"""
+	
 	def __init__(self,name,dir):
 		Spectra.__init__(self,name,dir)
 		self.avg_intense = self.average() 
@@ -109,8 +115,15 @@ if __name__ == "__main__":
 		return strftime("%H:%M:%S - ",gmtime())+a
 
 	specList = []
-	peakString = []
-
+	peakString = [REC_LENGTH,FLOW_RATE]
+	"""index legend for peakString array 
+	0 recording lenght
+	1 flow rate
+	2 name
+	3 no. peaks
+	4 sum of peaks
+	5 spec conc
+	"""
 	print(timeStampS("Processing background data"))
 	back = backgroundSpectra(BACKGROUND_FILENAME,DIRECTORY)
 	if shouldPlot:
@@ -136,6 +149,7 @@ if __name__ == "__main__":
 
 		print("Peak Count for "+spec.name+": "+str(len(peak)))
 		peakString.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.		
+	
 		if shouldPlot:#Plotting takes a lot of time
 			print(timeStampS("Plotting raw Spectra"))
 			spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intesnity (arb.u)","Emission Spectra ",False)
@@ -152,4 +166,3 @@ if __name__ == "__main__":
 			
 	with open(DIRECTORY+"peakData.txt","w") as f:#  Serialise data stored in PeakString and write to file
 		cPickle.dump(peakString,f)
-	
