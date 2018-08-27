@@ -11,21 +11,23 @@ Integration is done over 495 to 560nm. This can be modified in the code.
 The temporal plots assume an integration time with the int_time var (in seconds) below and must be overwritten with the correct value for correct plotting.
 """
 
-import h5py
+import h5py, bisect
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
-import bisect
+from time import gmtime, strftime
 
-INT_TIME = 0.15 #Integration time in seconds, over write this if using a different value, otherwise plot will be inaccurate.
-INTEGRATE_RANGE= (495,560)#Range of wavelength to be integrated over e.g.495-560 nm
+cur_time = strftime("%H:%M:%S", gmtime())
+INT_TIME = 0.015 #Integration time in seconds, overwrite this if using a different value, otherwise plot will be inaccurate.
+INTEGRATE_RANGE= (495,550)#Range of wavelength to be integrated over e.g.495-560 nm
 PLOT_RANGE = (450,650)#Range of wavelengths to plot in the fluorescent spectra and corrected plot, used to omit any outliers.
-THRESHOLD = 1000
-files = ["10to4-4","10to4-5","10to4-6"] #Array contains name of each fluorescent recording file
-file_dir = "./Records/2um/" #Directory the above files are contained
+THRESHOLD = 220#Use this var to manually specify threshold for peak counting
+files = ["10to1-1","10to1-2","10to1-3"] #Array contains name of each fluorescent recording file
 
-back_name = "back-5" #Name of the background recording file, assumed that it is in the same directory as file_dir
+file_dir = "./Records/test-1/" #Directory the above files are contained
 
+back_name = "background-1" #Name of the background recording file, assumed that it is in the same directory as file_dir
+plots_subFolder = "plots/"
 plt.ioff()#Plots are not displayed when they're created. (Prevents program from pausing)
 print("running")
 
@@ -63,7 +65,7 @@ def background_averaging(f_name):
     plt.plot(back_wave,avg_intense)#Spec group contains releavant data
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity (arb.u)")
-    plt.title("Average Background Spectra")
+    plt.title("Average Background Spectra ")
     plt.savefig(file_dir+f_name+".png",format="png")
 
     print("Background Calculated and averaged")
@@ -88,7 +90,7 @@ def analysis(file_name,avg_intense):
     plt.plot(wave[plot_index[0]:plot_index[1]],intense[plot_index[0]:plot_index[1]])
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity (arb.u)")
-    plt.title("Emission Spectra"+file_name)
+    plt.title("Emission Spectra "+file_name)
     plt.savefig(file_dir+"Emission_spec_"+file_name+".png",format="png")
 
     print(file_name+"Spectrum Plotted...")
@@ -99,7 +101,6 @@ def analysis(file_name,avg_intense):
     for i in range(intense.shape[1]):
         cor_intense.T[i] = intense.T[i]-avg_intense#subtracting the average
 
-
     print("Background Subtracted...")
 
     plt.figure(2)
@@ -108,7 +109,7 @@ def analysis(file_name,avg_intense):
     plt.plot(wave[plot_index[0]:plot_index[1]],cor_intense[plot_index[0]:plot_index[1]])
     plt.xlabel("Wavelength (nm)")
     plt.ylabel("Intensity (arb.u)")
-    plt.title("Emission Spectra Corrected"+file_name)
+    plt.title("Emission Spectra Corrected "+file_name)
 
     plt.savefig(file_dir+"Emission_spec_cor_"+file_name+".png",format="png")
     print(file_name+" Corrected Emission Spec plotted...")
@@ -123,25 +124,32 @@ def analysis(file_name,avg_intense):
         areas[i] = simps(cor_intense.T[i][left_indice:right_indice],x=wave[left_indice:right_indice])#Using simpsons numerical approximation
 
 
-    time_axis = np.arange(0,intense.shape[1])*INT_TIME
+    time_axis = np.arange(0,intense.shape[1])*INT_TIME #Creating a array for the time axis of the plot
 
     plt.figure(3)
     plt.clf()
     plt.grid()
 
     plt.plot(time_axis,areas,color="g")
-    plt.plot(time_axis,np.full((len(time_axis),1),THRESHOLD),color="r")
-    plt.title("Fluorenscence over time"+file_name)
+    #plt.plot(time_axis,np.full((len(time_axis),1),THRESHOLD),color="r")
+    plt.title("Fluorenscence over time "+file_name)
     plt.xlabel("Time (s)")
     plt.ylabel("Fluorescence Intensity Arbitary Units")
-    plt.savefig(file_dir+"over_time_spec_"+file_name+".png",format="png")
-    print("Integration complete and second plot complete")
+  
+    print("Integration complete")
+    
     ######### SPIKE/PEAK COUNTING OF FLUORESCENCE OVER TIME ############
     
-    peaks = 0
+    peaks = 0 #Counter var
+    offset = 0.18 #% Val above the base line that defines a peak
+    base_line = abs(np.mean(areas))
+    other_threshold = base_line+(offset*base_line)
+    plt.plot(time_axis,np.full((len(time_axis),1),other_threshold),color="b")
+    print("Base-line: "+str(int(base_line)))
     for i in areas:
-        if i >THRESHOLD:
+        if i > THRESHOLD:
             peaks+=1
+    plt.savefig(file_dir+"over_time_spec_"+file_name+".png",format="png")
     print("Peak counting complete\nPeaks Counted: "+str(peaks))
    
 

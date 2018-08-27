@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import SeaBreeze_Objective as SBO
 import DAQT7_Objective as DAQ
+import bisect
 
 Spec = SBO.DetectSpectrometer()
 Spec.setTriggerMode(0)
@@ -16,6 +17,7 @@ PhotoDiod_Port = "AIN1"
 DAQ1.writePort(shut_port, 5)
 def update_line(num, data, line):
     line.set_data(WaveLength,Spec.readIntensity(True, True)[0])
+    print(max(Spec.readIntensity(True, True)[0]))
     return line,
 
 fig1 = plt.figure()
@@ -25,7 +27,8 @@ l, = plt.plot([], [])
 
 #plt.xlim(0, 1100)
 #plt.ylim(0, 16000)
-plt.axis([300, 900, -500, 25000])
+plt.axis([450, 650, 0, 10000])
+plt.grid()
 plt.xlabel('Wavelength (nm)')
 plt.ylabel("Intensity (Arb. Units)")
 plt.title('Live Spectrometer Feed')
