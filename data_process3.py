@@ -40,32 +40,32 @@ class App:
         plotCheck.grid(row=2,column=1)
 
         tk.Label(root,text="Recording Length (s)").grid(row=3,column=0,sticky=tk.E)
-        self.rl_sv = tk.StringVar()
+        self.rl_sv = tk.StringVar(value="150")
         rec_entry = tk.Entry(root,textvariable=self.rl_sv,width=10)
         rec_entry.grid(row=3,column=1,sticky=tk.W)
         
         tk.Label(root,text="Flow Rate (mL/s)").grid(row=3,column=2,sticky=tk.E)
-        self.fr_sv = tk.StringVar()
+        self.fr_sv = tk.StringVar(value=str(0.2/60.0))
         fr_entry = tk.Entry(root,textvariable=self.fr_sv,width=10)
         fr_entry.grid(row=3,column=3,sticky=tk.W)
         
         tk.Label(root,text="Conc Val").grid(row=4,column=0,sticky=tk.E)
-        self.cv_sv = tk.StringVar()
+        self.cv_sv = tk.StringVar(value="2.274")
         cv_entry = tk.Entry(root,textvariable=self.cv_sv,width=10)
         cv_entry.grid(row=4,column=1,sticky=tk.W)
 
         tk.Label(root,text="Integration Time (s)").grid(row=4,column=2,sticky=tk.E)
-        self.it_sv = tk.StringVar()
+        self.it_sv = tk.StringVar(value="0.05")
         it_entry = tk.Entry(root,textvariable=self.it_sv,width=10)
         it_entry.grid(row=4,column=3,sticky=tk.W)
 
-        tk.Label(root,text="Integration Range e.g. <495,630>").grid(row=5,column=0,sticky=tk.E)
-        self.ir_sv = tk.StringVar()
+        tk.Label(root,text="Integration Range ").grid(row=5,column=0,sticky=tk.E)
+        self.ir_sv = tk.StringVar(value="495,550")
         ir_entry = tk.Entry(root,textvariable=self.ir_sv,width=10)
         ir_entry.grid(row=5,column=1,sticky=tk.W)
         
-        tk.Label(root,text="Plot Range e.g. <450,650>").grid(row=5,column=2,sticky=tk.E)
-        self.pr_sv = tk.StringVar()
+        tk.Label(root,text="Plot Range").grid(row=5,column=2,sticky=tk.E)
+        self.pr_sv = tk.StringVar(value="450,650")
         pr_entry = tk.Entry(root,textvariable=self.pr_sv,width=10)
         pr_entry.grid(row=5,column=3,sticky=tk.W)
 
@@ -99,9 +99,15 @@ class App:
         bgFileName = self.bg_sv.get() #Filename/dir of background file
         directory = bgFileName[0:bgFileName.rindex("/")+1]#Grab directory from the background file location
         dataFiles = self.dat_entry.get(0,tk.END)#List of all data files
+	
+	intRange= map(lambda x: float(x), self.ir_sv.get().split(","))
+	plotRange = map(lambda x: float(x), self.pr_sv.get().split(","))
+	intTime = float(self.it_sv.get())
+	flowRate = float(self.fr_sv.get())
+	recLen  = float(self.rl_sv.get())
+	conVal = float(self.cv_sv.get())
 
-        #print(self.toPlot.get())#bool for plotting
-        a = analysis(directory,bgFileName,dataFiles,self.toPlot.get(),self.it_sv.get(),list(self.ir_sv.get()),list(self.pr_sv.get()),self.outputText,self.fr_sv.get(),self.rl_sv.get(),self.cv_sv.get())
+        a = analysis(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.outputText,flowRate,recLen,conVal)
         
         #Parse all these values to an instance of the script? and the output window.
         
@@ -117,7 +123,7 @@ class Spectra():
 		"""Open the data file, and assign instance vars"""
 		self.name = name
 		self.INT_TIME = intTime
-		self.INEGRATE_RANGE = intRange
+		self.INTEGRATE_RANGE = intRange
 		self.PLOT_RANGE= pltRange
 		self.DIRECTORY = dir
 		self.oS = oS #output object(GUI element), use this inplace of any print statements
@@ -201,17 +207,18 @@ class analysis():
 
     def __init__(self,dir,bgFile,datFiles,toPlot,intTime,intRange,pltRange,oS,flowRate,recLen,conVal):
         self.shouldPlot = toPlot
-        self.FLOW_RATE = conVal 
+        self.FLOW_RATE = flowRate 
         self.REC_LENGTH = recLen
-        self.BACKGROUND_FILENAME = bgFile[bgFile.rindex("/"):]
+        self.BACKGROUND_FILENAME = bgFile[bgFile.rindex("/")+1:]
         self.dataFiles = datFiles
         self.INT_TIME = intTime
         self.INT_RANGE = intRange
         self.PLOT_RANGE = pltRange
         self.oS = oS #output stream, aka a text object from tkinter
 	self.DIRECTORY=dir
+	self.CONC_VAL = conVal
         self.processing()#start the processing!
-        
+
     def timeStampS(self,a):
         """Time stamping function takes in a string and prefixes it with time in HMS format then returns altered string"""
 	return strftime("%H:%M:%S - ",gmtime())+a
@@ -232,9 +239,8 @@ class analysis():
 	else:
 		print("Skipping background plot")
 
-	for file in dataFiles:#Create list of spectra objects
-                name = file[file.rindex("/"):]
-		print(name)
+	for file in self.dataFiles:#Create list of spectra objects
+                name = file[file.rindex("/")+1:]
 		specList.append(Spectra(name,self.DIRECTORY,self.INT_TIME,self.INT_RANGE,self.PLOT_RANGE,self.oS,back.avg_intense))
 
 	print(self.timeStampS("Loaded data files"+"\n--------------\n\n"))
@@ -250,7 +256,7 @@ class analysis():
 		peak = spec.integration()
 		print(self.timeStampS("Integrated spectra and counted peaks"))
 
-		print("Peak Count for "+spec.name+": "+str(len(peak)))
+		print("Peak Count for "+spec.name+": "+str(len(peak))+" Sum: "+str(sum(peak))+" Conc: "+str(spec.conc))
 		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.      
 	
 		if self.shouldPlot:#Plotting takes a lot of time
@@ -270,7 +276,7 @@ class analysis():
 
 
 	"""Bead Intensity analysis and enumeration """
-
+	
 	x = []#Contains concentration
 	y = []#Contains intentiy values measured, x and y must be of the same length, parallel arrays
 
@@ -284,15 +290,15 @@ class analysis():
 			y.append(specDat[2])
 
 	x = np.array(x)
-	x= x*CONC_VAL
-
+	x= x*self.CONC_VAL
+	print(x,y)
 	cc = np.polyfit(np.log10(x),np.log10(y),1)#Fit the data points
 
 	linspace = np.linspace(2,6,20)#line space for fitted line
 	plt.plot(np.log10(x),np.log10(y),marker=".",linestyle="None")#Plot data
 	plt.plot(linspace,cc[0]*linspace+cc[1])#Plot fitted line
 
-	plt.xlabel("Cocentration "+str(CONC_VAL)+"x 10^x beads/ml")
+	plt.xlabel("Cocentration "+str(self.CONC_VAL)+"x 10^x beads/ml")
 	plt.ylabel("Total intensity measured 10^y arb units")
 	plt.show()
 	plt.savefig("singleIntense.png",format="png")
@@ -306,7 +312,7 @@ class analysis():
 	f.write("Single Bead Intensity, Fitted value: "+str(sI)+"\n")
 	f.write("Bead Table\nConcentration : Bead Count : Expected Bead Count\n")
 	for i in range(0,len(x)):
-		stringToAppend = str(int(x[i]))+"  "+str(int(y[i][0]/sI))+"  "+str(int(int(x[i])*FLOW_RATE*REC_LENGTH)) + "\n"
+		stringToAppend = str(int(x[i]))+"  "+str(int(y[i][0]/sI))+"  "+str(int(int(x[i])*self.FLOW_RATE*self.REC_LENGTH)) + "\n"
 		print(stringToAppend)
 		f.write(stringToAppend)
 	f.close()
