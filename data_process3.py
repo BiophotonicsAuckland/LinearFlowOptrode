@@ -279,15 +279,20 @@ class analysis():
 	
 	x = []#Contains concentration
 	y = []#Contains intentiy values measured, x and y must be of the same length, parallel arrays
+	 xDict = {}#Used to count number of data points at each concentration, so averaging can be done.
 
-	for specDat in peakData:
-		if specDat[3] in x:#If we already have a measurement for this concentration avg the values
-			index = x.index(specDat[3])
-			y[index]+=specDat[2]
-			y[index]/=2
-		else:#Otherwise we add it to our data array 
-			x.append(specDat[3])
-			y.append(specDat[2])
+        for specDat in peakData:
+                if specDat[3] in x:#If we already have a measurement for this concentration avg the values
+                        xDict[specDat[3]]+=1
+                        index = x.index(specDat[3])
+                        y[index]+=specDat[2]
+                else:#Otherwise we add it to our data array     
+                        xDict[specDat[3]] = 0#start counter for no. data points
+                        x.append(specDat[3])
+                        y.append(specDat[2])
+
+        for i in range(0,len(y)):#Averaging
+                y[i]/=float(xDict[x[i]])
 
 	x = np.array(x)
 	x= x*self.CONC_VAL
