@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
 from time import gmtime, strftime
+import threading 
 
 class App:
     """This object contains all graphical elements and handling"""
@@ -23,8 +24,9 @@ class App:
         self.bg_sv = tk.StringVar()
         dir_entry = tk.Entry(root,state="readonly",textvariable=self.bg_sv,width=50)
         dir_browse = tk.Button(text="Browse",command=lambda: self.getFile(self.bg_sv))
-
-        self.dat_entry = tk.Listbox(root,state="normal",width=50,height=5)
+	
+	dat_scroll = tk.Scrollbar(root)
+        self.dat_entry = tk.Listbox(root,state="normal",width=50,height=5,yscrollcommand=dat_scroll.set)
         dat_browse= tk.Button(root,text="Browse",command=lambda: self.getFiles(self.dat_entry))
         
         tk.Label(root, text="Background").grid(row=0,column=0,sticky=tk.W)
@@ -32,8 +34,10 @@ class App:
         dir_entry.grid(row=0,column=1)
         
         tk.Label(root,text="Data Files").grid(row=1,column=0,sticky=tk.W)
-        dat_browse.grid(row=1,column=2,sticky=tk.E)
+	dat_browse.grid(row=1,column=3,sticky=tk.E)
         self.dat_entry.grid(row=1,column=1)
+	dat_scroll.grid(row=1,column=2,sticky=tk.W)
+	dat_scroll.config(command=self.dat_entry.yview)
 
         self.toPlot = tk.IntVar()
         plotCheck = tk.Checkbutton(root,text="Do you wish to plot? (This takes longer)",variable=self.toPlot)
@@ -48,7 +52,7 @@ class App:
         self.fr_sv = tk.StringVar(value=str(0.2/60.0))
         fr_entry = tk.Entry(root,textvariable=self.fr_sv,width=10)
         fr_entry.grid(row=3,column=3,sticky=tk.W)
-        
+
         tk.Label(root,text="Conc Val").grid(row=4,column=0,sticky=tk.E)
         self.cv_sv = tk.StringVar(value="2.274")
         cv_entry = tk.Entry(root,textvariable=self.cv_sv,width=10)
@@ -71,9 +75,12 @@ class App:
 
         self.st_button = tk.Button(root, text="start",command=self.startProcess)
         self.st_button.grid(row=6)
-
-        self.outputText = tk.Text(root)
-        self.outputText.grid(row=7,columnspan=4)
+	
+	out_scroll = tk.Scrollbar(root)
+	out_scroll.grid(row=7,column=4)
+        self.outputText = tk.Text(root,yscrollcommand=out_scroll.set)
+        self.outputText.grid(row=7,columnspan=3)
+	out_scroll.config(command=self.outputText.yview)
 
     def getFile(self,sv):
         """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""
@@ -91,7 +98,7 @@ class App:
             for filename in filenames:
                 #print(filename)
                 lb.insert(tk.END, str(filename))
-
+	#lb.xview(tk.END)
 
     def startProcess(self):
         """Grabs all relevant values from user input and starts processing of data"""
@@ -106,11 +113,26 @@ class App:
 	flowRate = float(self.fr_sv.get())
 	recLen  = float(self.rl_sv.get())
 	conVal = float(self.cv_sv.get())
+	
+	self.oS = []
+	analysis_thread = threading.Thread(target=analysis,args=(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.oS,flowRate,recLen,conVal))
+        analysis_thread.start()
+	#a = analysis(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.outputText,flowRate,recLen,conVal)
+        
+	self.updateOut()
 
-        a = analysis(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.outputText,flowRate,recLen,conVal)
-        
-        #Parse all these values to an instance of the script? and the output window.
-        
+    def updateOut(self):
+	self.outputText.delete('1.0',tk.END)
+	stop = False
+	for line in self.oS:
+		if line=="$$":
+			stop = True	
+		else:
+			self.outputText.insert(tk.END,line+'\n')
+	if not stop:
+		self.outputText.yview(tk.END)
+		root.after(100,self.updateOut)
+
 class Spectra():
 	"""This class represents a given spectra recording and contains functionality for computing and plotting particular data"""
 	#Constants #old/deprecated default vals
@@ -134,7 +156,7 @@ class Spectra():
 			self.conc = 10**int(self.name[4])
 		else:
 			self.conc = None
-			print("WARNING: Concentration not found in file name: "+self.name)
+			self.oS.append("WARNING: Concentration not found in file name: "+self.name)
 
 		
 		file = self.DIRECTORY+self.name
@@ -181,7 +203,7 @@ class Spectra():
 			self.areas[i] = simps(self.sub_intense.T[i][left_indice:right_indice],x=self.wave[left_indice:right_indice])
 		self.time_axis = np.arange(0,self.intense.shape[1])*self.INT_TIME
 		tempThreshold = 3*np.std(self.areas)
-		print(tempThreshold)
+
 		peakIntense = []
 		for i in self.areas:
 			if i>tempThreshold:
@@ -232,46 +254,47 @@ class analysis():
 	2 sum of peaks
 	3 spec conc
 	"""
-	print(("Processing background data"))
+	self.oS.append("Processing background data")
 	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.INT_RANGE,self.PLOT_RANGE,self.oS)
 	if self.shouldPlot:
 		back.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ",False)
 	else:
-		print("Skipping background plot")
+		self.oS.append("Skipping background plot")
 
 	for file in self.dataFiles:#Create list of spectra objects
                 name = file[file.rindex("/")+1:]
 		specList.append(Spectra(name,self.DIRECTORY,self.INT_TIME,self.INT_RANGE,self.PLOT_RANGE,self.oS,back.avg_intense))
 
-	print(self.timeStampS("Loaded data files"+"\n--------------\n\n"))
+	self.oS.append(self.timeStampS("Loaded data files"+"\n--------------\n\n"))
 	
 	for spec in specList:#Plotting and computation calls here
-		print(self.timeStampS("Beginning with "+spec.name))
+		self.oS.append(self.timeStampS("Beginning with "+spec.name))
 
 		
 		spec.subtract()
-		print(self.timeStampS("Subtracting background"))
+		self.oS.append(self.timeStampS("Subtracting background"))
 
 
 		peak = spec.integration()
-		print(self.timeStampS("Integrated spectra and counted peaks"))
+		self.oS.append(self.timeStampS("Integrated spectra and counted peaks"))
 
-		print("Peak Count for "+spec.name+": "+str(len(peak))+" Sum: "+str(sum(peak))+" Conc: "+str(spec.conc))
+		self.oS.append("Peak Count for "+spec.name+": "+str(len(peak))+" Sum: "+str(sum(peak))+" Conc: "+str(spec.conc))
 		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.      
 	
 		if self.shouldPlot:#Plotting takes a lot of time
-			print(self.timeStampS("Plotting raw Spectra"))
+			self.oS.append(self.timeStampS("Plotting raw Spectra"))
 			spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intensity (arb.u)","Emission Spectra ",False)
 				
-			print(self.timeStampS("Plotting corrected spectra"))
+			self.oS.append(self.timeStampS("Plotting corrected spectra"))
 			spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra ",False)  
 			
-			print(self.timeStampS("Plotting fluorescence over time"))
+			self.oS.append(self.timeStampS("Plotting fluorescence over time"))
 			spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time ",True)
 		else:
-			print("Skipping plots")
+			pass
+			#print("Skipping plots")
 
-		print(self.timeStampS("Finished processing "+spec.name+"\n-----------------------------\n\n"))
+		self.oS.append(self.timeStampS("Finished processing "+spec.name+"\n-----------------------------\n\n"))
             
 
 
@@ -279,7 +302,7 @@ class analysis():
 	
 	x = []#Contains concentration
 	y = []#Contains intentiy values measured, x and y must be of the same length, parallel arrays
-	 xDict = {}#Used to count number of data points at each concentration, so averaging can be done.
+	xDict = {}#Used to count number of data points at each concentration, so averaging can be done.
 
         for specDat in peakData:
                 if specDat[3] in x:#If we already have a measurement for this concentration avg the values
@@ -296,7 +319,7 @@ class analysis():
 
 	x = np.array(x)
 	x= x*self.CONC_VAL
-	print(x,y)
+	#print(x,y)
 	cc = np.polyfit(np.log10(x),np.log10(y),1)#Fit the data points
 
 	linspace = np.linspace(2,6,20)#line space for fitted line
@@ -305,22 +328,23 @@ class analysis():
 
 	plt.xlabel("Cocentration "+str(self.CONC_VAL)+"x 10^x beads/ml")
 	plt.ylabel("Total intensity measured 10^y arb units")
-	plt.show()
+	#plt.show()
 	plt.savefig("singleIntense.png",format="png")
 	sI = 10**cc[0][0]
 	
-	print("Fitted intensity value for 1 bead: ",sI)
+	self.oS.append("Fitted intensity value for 1 bead: "+str(sI))
 
-	print("\nBeads observed:\nConc : BeadCount : ExpectedBeadCount")
+	self.oS.append("\nBeads observed:\nConc : BeadCount : ExpectedBeadCount")
 	f= open(self.DIRECTORY+"data_output.txt","w+")
 	f.write("Outputted Data for "+self.DIRECTORY+"\n")
 	f.write("Single Bead Intensity, Fitted value: "+str(sI)+"\n")
 	f.write("Bead Table\nConcentration : Bead Count : Expected Bead Count\n")
 	for i in range(0,len(x)):
 		stringToAppend = str(int(x[i]))+"  "+str(int(y[i][0]/sI))+"  "+str(int(int(x[i])*self.FLOW_RATE*self.REC_LENGTH)) + "\n"
-		print(stringToAppend)
+		self.oS.append(stringToAppend)
 		f.write(stringToAppend)
 	f.close()
+	self.oS.append("$$")#script end
         
 if __name__ =="__main__":
     root = tk.Tk()
