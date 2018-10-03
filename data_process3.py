@@ -1,3 +1,5 @@
+#/usr/bin/env python
+#@author: Liam Murphy
 import Tkinter as tk
 import tkFileDialog as filedialog
 
@@ -141,12 +143,10 @@ class Spectra():
 	#PLOT_RANGE = (450,650) #Plot a particular range of the dataset
 	
 
-	def __init__(self,name,dir,intTime,intRange,pltRange,oS, *args):
+	def __init__(self,name,dir,intTime,oS, *args):
 		"""Open the data file, and assign instance vars"""
 		self.name = name
 		self.INT_TIME = intTime
-		self.INTEGRATE_RANGE = intRange
-		self.PLOT_RANGE= pltRange
 		self.DIRECTORY = dir
 		self.oS = oS #output object(GUI element), use this inplace of any print statements
 		
@@ -165,27 +165,9 @@ class Spectra():
 		self.intense = np.array(spec["Intensities"])
 		self.wave = np.array(spec["WaveLength"])
 		dataF.close()		
-		self.plot_index = (bisect.bisect(self.wave,self.PLOT_RANGE[0]),bisect.bisect(self.wave,self.PLOT_RANGE[1]))
 
 		if args:#if additional arg is given then this file is not a background spectra and has been parsed the average background spectra
 			self.avg_intense = args[0]
-
-	def plot(self,x,y,xl,yl,title,ifTime):
-		"""Plots the parsed data, may want to move this func outside of spectra class"""
-		plt.clf()
-		plt.grid()
-		plt.xlabel(xl)
-		plt.ylabel(yl)
-		plt.title(title+" "+self.name)
-		if not ifTime:#If not a time plot it will make the following slices 
-			x = x[self.plot_index[0]:self.plot_index[1]]
-			y = y[self.plot_index[0]:self.plot_index[1]]	
-		plt.plot(x,y)		
-		plt.savefig(self.DIRECTORY+title+self.name+".png",format="png")#may want to move this function call separately.
-	
-	def savePlot(self,fileName):
-		"""Alternative method of saving plot to specified file name """
-		plt.savefig(self.DIRECTORY+fileName+self.name+".png")
 		
 	def subtract(self):
 		""" Subtracts the average intensity of the background spectra from this spectra"""
@@ -193,19 +175,26 @@ class Spectra():
 		for i in range(self.intense.shape[1]):
 			self.sub_intense.T[i] = self.intense.T[i] - self.avg_intense
 			
-	def integration(self):
-		"""Using simpsons numerical methods, computes the area under the curve over the specified domain, used to quantify the amount of fluorescence in a given time"""
-		left_indice = bisect.bisect(self.wave,self.INTEGRATE_RANGE[0])
-		right_indice = bisect.bisect(self.wave,self.INTEGRATE_RANGE[1])
-		self.areas = np.zeros((self.intense.shape[1],1))
+	def integration(self,intRange):
+		"""Using simpsons numerical methods, computes the area under the curve over the specified domain, used to quantify the amount of fluorescence in a given time.
+		Takes a 2-tuple containing range of wavelengths for integration to occur
+		returns array of areas """
+		
+		left_indice = bisect.bisect(self.wave,intRange[0])
+		right_indice = bisect.bisect(self.wave,intRange[1])
+		areas = np.zeros((self.intense.shape[1],1))
 		
 		for i in range(self.intense.shape[1]):
-			self.areas[i] = simps(self.sub_intense.T[i][left_indice:right_indice],x=self.wave[left_indice:right_indice])
+			areas[i] = simps(self.sub_intense.T[i][left_indice:right_indice],x=self.wave[left_indice:right_indice])
 		self.time_axis = np.arange(0,self.intense.shape[1])*self.INT_TIME
-		tempThreshold = 3*np.std(self.areas)
+		
+		return areas
 
+	def peakCount(self, areas):
+		"""Takes an array of computed areas from integration, returns array of those areas that represent peaks that surpass the threshold"""
+		tempThreshold = 3*np.std(areas)
 		peakIntense = []
-		for i in self.areas:
+		for i in areas:
 			if i>tempThreshold:
 				peakIntense.append(i)
 		return peakIntense
@@ -213,8 +202,8 @@ class Spectra():
 class backgroundSpectra(Spectra):
 	"""Extension of spectra class, extending an averaging function that is only needed for background spectra"""
 	
-	def __init__(self,name,dir,intTime,intRange,pltRange,oS):
-		Spectra.__init__(self,name,dir,intTime,intRange,pltRange,oS)
+	def __init__(self,name,dir,intTime,oS):
+		Spectra.__init__(self,name,dir,intTime,oS)
 		self.avg_intense = self.average() 
 
 	def average(self):
@@ -245,7 +234,22 @@ class analysis():
         """Time stamping function takes in a string and prefixes it with time in HMS format then returns altered string"""
 	return strftime("%H:%M:%S - ",gmtime())+a
     
+    def plot(self,x,y,xl,yl,title):
+		"""Plots the parsed data, may want to move this func outside of spectra class"""
+		plt.clf()
+		plt.grid()
+		plt.xlabel(xl)
+		plt.ylabel(yl)
+		plt.title(title+" "+self.name)
+		plt.plot(x,y)		
+		plt.savefig(self.DIRECTORY+title+self.name+".png",format="png")#may want to move this function call separately.
+	
+    def savePlot(self,fileName):
+	"""Alternative method of saving plot to specified file name """
+	plt.savefig(self.DIRECTORY+fileName+self.name+".png")
+
     def processing(self):
+	
 	specList = []
 	peakData = []
 	"""index legend for peakString array 
@@ -254,8 +258,10 @@ class analysis():
 	2 sum of peaks
 	3 spec conc
 	"""
+	
 	self.oS.append("Processing background data")
-	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.INT_RANGE,self.PLOT_RANGE,self.oS)
+	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.oS)
+	
 	if self.shouldPlot:
 		back.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ",False)
 	else:
@@ -263,36 +269,35 @@ class analysis():
 
 	for file in self.dataFiles:#Create list of spectra objects
                 name = file[file.rindex("/")+1:]
-		specList.append(Spectra(name,self.DIRECTORY,self.INT_TIME,self.INT_RANGE,self.PLOT_RANGE,self.oS,back.avg_intense))
+		specList.append(Spectra(name,self.DIRECTORY,self.INT_TIME,self.oS,back.avg_intense))
 
 	self.oS.append(self.timeStampS("Loaded data files"+"\n--------------\n\n"))
 	
 	for spec in specList:#Plotting and computation calls here
-		self.oS.append(self.timeStampS("Beginning with "+spec.name))
+		pltI = (bisect.bisect(spec.wave,self.PLOT_RANGE[0]),bisect.bisect(spec.wave,self.PLOT_RANGE[1]))
 
+		self.oS.append(self.timeStampS("Beginning with "+spec.name))
 		
 		spec.subtract()
 		self.oS.append(self.timeStampS("Subtracting background"))
+		
+		areas = spec.integration(self.INT_RANGE)
+		peak = spec.peakCount(areas)
 
-
-		peak = spec.integration()
 		self.oS.append(self.timeStampS("Integrated spectra and counted peaks"))
 
 		self.oS.append("Peak Count for "+spec.name+": "+str(len(peak))+" Sum: "+str(sum(peak))+" Conc: "+str(spec.conc))
-		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.      
+		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.
 	
 		if self.shouldPlot:#Plotting takes a lot of time
 			self.oS.append(self.timeStampS("Plotting raw Spectra"))
-			spec.plot(spec.wave,spec.intense,"Wavelength (nm)","Intensity (arb.u)","Emission Spectra ",False)
+			spec.plot(spec.wave[pltI[0]:pltI[1]],spec.intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Emission Spectra ")
 				
 			self.oS.append(self.timeStampS("Plotting corrected spectra"))
-			spec.plot(spec.wave,spec.sub_intense,"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra ",False)  
+			spec.plot(spec.wave[pltI[0]:pltI[1]],spec.sub_intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra ")  
 			
 			self.oS.append(self.timeStampS("Plotting fluorescence over time"))
-			spec.plot(spec.time_axis,spec.areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time ",True)
-		else:
-			pass
-			#print("Skipping plots")
+			spec.plot(spec.time_axis,areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time ")
 
 		self.oS.append(self.timeStampS("Finished processing "+spec.name+"\n-----------------------------\n\n"))
             
@@ -301,7 +306,7 @@ class analysis():
 	"""Bead Intensity analysis and enumeration """
 	
 	x = []#Contains concentration
-	y = []#Contains intentiy values measured, x and y must be of the same length, parallel arrays
+	y = []#Contains intensity values measured, x and y must be of the same length, parallel arrays
 	xDict = {}#Used to count number of data points at each concentration, so averaging can be done.
 
         for specDat in peakData:
@@ -339,6 +344,7 @@ class analysis():
 	f.write("Outputted Data for "+self.DIRECTORY+"\n")
 	f.write("Single Bead Intensity, Fitted value: "+str(sI)+"\n")
 	f.write("Bead Table\nConcentration : Bead Count : Expected Bead Count\n")
+	
 	for i in range(0,len(x)):
 		stringToAppend = str(int(x[i]))+"  "+str(int(y[i][0]/sI))+"  "+str(int(int(x[i])*self.FLOW_RATE*self.REC_LENGTH)) + "\n"
 		self.oS.append(stringToAppend)
