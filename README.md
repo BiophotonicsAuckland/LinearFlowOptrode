@@ -8,6 +8,7 @@ This program simply plots photodiode and the spectra in real time, fixed axis th
 ## Optrode Version 4.2.py
 Authors: YJonmo (original CLI version), Olivier G (GUI additions), Liam Murphy (Minor design and feature additions)
 This program interfaces a spectrometer, DAC card and shutter. Records spectroscopic data into hdf5 file.
+Has several requisite class files stored in /req/.
 
 ## Data_process3.py
 This script processes a series of hdf5 files produced from optrodev4.2.
