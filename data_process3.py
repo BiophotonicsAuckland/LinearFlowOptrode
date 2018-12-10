@@ -240,16 +240,17 @@ class analysis():
 		plt.grid()
 		plt.xlabel(xl)
 		plt.ylabel(yl)
-		plt.title(title+" "+self.name)
+		plt.title(title)
 		plt.plot(x,y)		
-		plt.savefig(self.DIRECTORY+title+self.name+".png",format="png")#may want to move this function call separately.
+		plt.savefig(self.DIRECTORY+title+".png",format="png")#may want to move this function call separately.
 	
     def savePlot(self,fileName):
 	"""Alternative method of saving plot to specified file name """
 	plt.savefig(self.DIRECTORY+fileName+self.name+".png")
 
     def processing(self):
-	
+	""" This code instantiates the spectra data and processes it"""
+
 	specList = []
 	peakData = []
 	"""index legend for peakString array 
@@ -263,7 +264,7 @@ class analysis():
 	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.oS)
 	
 	if self.shouldPlot:
-		back.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ",False)
+		self.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ")
 	else:
 		self.oS.append("Skipping background plot")
 
@@ -283,28 +284,36 @@ class analysis():
 		
 		areas = spec.integration(self.INT_RANGE)
 		peak = spec.peakCount(areas)
+		
+		#integrate over secondary range
+		secArea = spec.integration(self.INT_RANGE)
+		#Count peaks again
+		secPeak = spec.peakCount(secArea)
 
 		self.oS.append(self.timeStampS("Integrated spectra and counted peaks"))
 
 		self.oS.append("Peak Count for "+spec.name+": "+str(len(peak))+" Sum: "+str(sum(peak))+" Conc: "+str(spec.conc))
 		peakData.append([spec.name,len(peak),sum(peak), spec.conc])#Create an array containing name, number of peaks, sum of peaks, and the concentration and then adds this list to another list.
-	
+		
+		# temporary variable time axis plot range
+		tAi = bisect.bisect(spec.time_axis, 5)
 		if self.shouldPlot:#Plotting takes a lot of time
 			self.oS.append(self.timeStampS("Plotting raw Spectra"))
-			spec.plot(spec.wave[pltI[0]:pltI[1]],spec.intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Emission Spectra ")
+			self.plot(spec.wave[pltI[0]:pltI[1]],spec.intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Emission Spectra "+spec.name)
 				
 			self.oS.append(self.timeStampS("Plotting corrected spectra"))
-			spec.plot(spec.wave[pltI[0]:pltI[1]],spec.sub_intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra ")  
+			self.plot(spec.wave[pltI[0]:pltI[1]],spec.sub_intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name)  
 			
 			self.oS.append(self.timeStampS("Plotting fluorescence over time"))
-			spec.plot(spec.time_axis,areas,"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time ")
+			self.plot(spec.time_axis[tAi:],areas[tAi:],"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time "+spec.name)
 
 		self.oS.append(self.timeStampS("Finished processing "+spec.name+"\n-----------------------------\n\n"))
             
 
 
 	"""Bead Intensity analysis and enumeration """
-	
+	"""Make below code modular, put into function, taking peakdata as parameter. Return written file or plots??"""
+	"""def enumeration(peakData):"""
 	x = []#Contains concentration
 	y = []#Contains intensity values measured, x and y must be of the same length, parallel arrays
 	xDict = {}#Used to count number of data points at each concentration, so averaging can be done.

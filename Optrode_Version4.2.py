@@ -1,39 +1,24 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 12 11:00:10 2016
-This code runs the Optrode version 2
-@author: Yaqub Jonmohamadi
+Modified version  of OptrodeVersion 2(original author: Yaqub Jonmohamadi)
+GUI Modification by Olivier Graffeuille 
+Minor edits and feature addtions by Liam Murphy
 """
 
-import matplotlib
-import socket
-import subprocess
-import time
-import struct
-import os
-import sys
-import tempfile
-import glob
-import datetime
-import time
-import bisect
+import matplotlib, socket, subprocess,struct, os, sys,tempfile, glob,datetime,time, bisect,os.path,h5py
 from multiprocessing import Process, Value, Array
 from Tkinter import *
 from ttk import Button, Style, Label, Entry, Notebook, Scale
 from tkFileDialog import askopenfilename
 from PIL import Image, ImageTk
-
-import h5py
 import DAQT7_Objective as DAQ
 import SeaBreeze_Objective as SBO
 import ThorlabsPM100_Objective as P100
 import numpy as np
 import matplotlib.pyplot as plt
-import os.path
-
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
-
 import matplotlib.animation as animation
 
 #%%
@@ -791,10 +776,10 @@ if __name__ == "__main__":
 	# Setting variables
 	filename = StringVar(value="")      # Filename of output data
 	is_suff = IntVar(value=0)           # 0 or 1 depending on whether or not to add a suffix to filename
-	int_time = StringVar(value="15")    # Integration time of spectrometer (ms)
-	rec_time = StringVar(value="10")    # Recording duration of spectrometer (s)
-	min_len = StringVar(value="300")    # Minimum wavelength to record (nm)
-	max_len = StringVar(value="900")    # Maximum wavelength to record (nm)
+	int_time = StringVar(value="50")    # Integration time of spectrometer (ms)
+	rec_time = StringVar(value="90")    # Recording duration of spectrometer (s)
+	min_len = StringVar(value="450")    # Minimum wavelength to record (nm)
+	max_len = StringVar(value="650")    # Maximum wavelength to record (nm)
 	par_mode = StringVar(value="c")     # Paradigm mode ('c' or 'm')
 	shut_mode = StringVar(value=Blue_Shutter)   # Shutter to use (Blue_Shutter or Green_Shutter)
 
