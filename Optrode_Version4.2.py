@@ -12,9 +12,9 @@ from Tkinter import *
 from ttk import Button, Style, Label, Entry, Notebook, Scale
 from tkFileDialog import askopenfilename
 from PIL import Image, ImageTk
-import DAQT7_Objective as DAQ
-import SeaBreeze_Objective as SBO
-import ThorlabsPM100_Objective as P100
+import req.DAQT7_Objective as DAQ
+import req.SeaBreeze_Objective as SBO
+import req.ThorlabsPM100_Objective as P100
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
