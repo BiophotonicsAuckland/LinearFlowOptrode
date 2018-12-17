@@ -2,8 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import SeaBreeze_Objective as SBO
-import DAQT7_Objective as DAQ
+import req.SeaBreeze_Objective as SBO
+import req.DAQT7_Objective as DAQ
 import bisect
 
 Spec = SBO.DetectSpectrometer()
