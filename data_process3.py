@@ -41,10 +41,7 @@ class App:
 	dat_scroll.grid(row=1,column=2,sticky=tk.W)
 	dat_scroll.config(command=self.dat_entry.yview)
 
-        self.toPlot = tk.IntVar()
-        plotCheck = tk.Checkbutton(root,text="Do you wish to plot? (This takes longer)",variable=self.toPlot)
-        plotCheck.grid(row=2,column=1)
-
+        
         tk.Label(root,text="Recording Length (s)").grid(row=3,column=0,sticky=tk.E)
         self.rl_sv = tk.StringVar(value="150")
         rec_entry = tk.Entry(root,textvariable=self.rl_sv,width=10)
@@ -75,14 +72,52 @@ class App:
         pr_entry = tk.Entry(root,textvariable=self.pr_sv,width=10)
         pr_entry.grid(row=5,column=3,sticky=tk.W)
 
+	tk.Label(root, text="Plot Selection").grid(row=6,column=1)
+
+	self.toPlot = tk.IntVar()
+        plotCheck = tk.Checkbutton(root,text="Plot All (This takes longer)",variable=self.toPlot, command=self.checkAll)
+        plotCheck.grid(row=8,column=1)
+	
+	self.toPlotBac = tk.IntVar()
+	plotBacCheck = tk.Checkbutton(root,text="Background Spectra",variable=self.toPlotBac)
+	plotBacCheck.grid(row=9, column =0)
+	
+	self.toPlotRaw = tk.IntVar()
+	plotRawCheck = tk.Checkbutton(root,text="Raw Spectra",variable=self.toPlotRaw)
+	plotRawCheck.grid(row=9,column=2)
+
+	self.toPlotCor = tk.IntVar()
+	plotCorCheck = tk.Checkbutton(root,text="Corrected Spectra", variable = self.toPlotCor)
+	plotCorCheck.grid(row=9,column=3)
+
+	self.toPlotRes = tk.IntVar()
+	plotResCheck = tk.Checkbutton(root,text="Residual Spectra", variable = self.toPlotRes)
+	plotResCheck.grid(row=9, column =1)
+
+	self.toPlotTim = tk.IntVar()
+	plotTimCheck = tk.Checkbutton(root,text="Sig vs Time", variable =self.toPlotTim)
+	plotTimCheck.grid(row=9,column=4)	
+	
+	self.checkButList = [plotTimCheck,plotCorCheck,plotRawCheck,plotBacCheck,plotResCheck]
+
         self.st_button = tk.Button(root, text="start",command=self.startProcess)
-        self.st_button.grid(row=6)
+        self.st_button.grid(row=10)
 	
 	out_scroll = tk.Scrollbar(root)
-	out_scroll.grid(row=7,column=4)
+	out_scroll.grid(row=11,column=4)
         self.outputText = tk.Text(root,yscrollcommand=out_scroll.set)
-        self.outputText.grid(row=7,columnspan=3)
+        self.outputText.grid(row=11,columnspan=3)
 	out_scroll.config(command=self.outputText.yview)
+
+
+    def checkAll(self):
+	"""toggles all checkbuttons on or off depending on value of the plot all check button"""
+	if self.toPlot.get():
+		for checkBut in self.checkButList:
+			checkBut.select()
+	else:
+		for checkBut in self.checkButList:
+			checkBut.deselect()	
 
     def getFile(self,sv):
         """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""
@@ -117,7 +152,9 @@ class App:
 	conVal = float(self.cv_sv.get())
 	
 	self.oS = []
-	analysis_thread = threading.Thread(target=analysis,args=(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.oS,flowRate,recLen,conVal))
+	#0, all, 1 raw, 2 cor,3 res, 4 tim
+	plotTuple = (self.toPlot.get(),self.toPlotBac.get(),self.toPlotRes.get(),self.toPlotRaw.get(), self.toPlotCor.get(), self.toPlotTim.get())
+	analysis_thread = threading.Thread(target=analysis,args=(directory,bgFileName,dataFiles,plotTuple,intTime,intRange,plotRange,self.oS,flowRate,recLen,conVal))
         analysis_thread.start()
 	#a = analysis(directory,bgFileName,dataFiles,self.toPlot.get(),intTime,intRange,plotRange,self.outputText,flowRate,recLen,conVal)
         
@@ -236,13 +273,26 @@ class analysis():
     
     def plot(self,x,y,xl,yl,title):
 		"""Plots the parsed data, may want to move this func outside of spectra class"""
-		plt.clf()
-		plt.grid()
-		plt.xlabel(xl)
-		plt.ylabel(yl)
-		plt.title(title)
-		plt.plot(x,y)		
-		plt.savefig(self.DIRECTORY+title+".png",format="png")#may want to move this function call separately.
+		if title =="Corrected Spectrdddda p10to7-15.hdf5": #change this string to what ever file you want to have special plot properties
+			plt.clf()
+			plt.grid()
+			plt.xlabel(xl)
+			plt.ylabel(yl)
+			plt.title(title)
+			plt.ylim(-20,60)
+			print("customset")
+			plt.plot(x,y)	
+			plt.savefig(self.DIRECTORY+title+".png",format="png")#may want to move this function call separately.
+
+		else:
+			plt.clf()
+			plt.grid()
+			plt.xlabel(xl)
+			plt.ylabel(yl)
+			plt.title(title)
+			#plt.ylim(-50,333)
+			plt.plot(x,y)		
+			plt.savefig(self.DIRECTORY+title+".png",format="png")#may want to move this function call separately.
 	
     def savePlot(self,fileName):
 	"""Alternative method of saving plot to specified file name """
@@ -263,11 +313,17 @@ class analysis():
 	self.oS.append("Processing background data")
 	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.oS)
 	
-	if self.shouldPlot:
+	if self.shouldPlot[1]:#Plotting background spec
 		self.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ")
 	else:
 		self.oS.append("Skipping background plot")
 
+	if self.shouldPlot[2]:#plotting residual back
+		back.subtract()
+		self.plot(back.wave,back.sub_intense,"Wavelength (nm)","Intesntiy (AU)","Residual Background spectra")
+	else:
+		self.oS.append("Skipping residual background plot")
+		
 	for file in self.dataFiles:#Create list of spectra objects
                 name = file[file.rindex("/")+1:]
 		specList.append(Spectra(name,self.DIRECTORY,self.INT_TIME,self.oS,back.avg_intense))
@@ -297,13 +353,16 @@ class analysis():
 		
 		# temporary variable time axis plot range
 		tAi = bisect.bisect(spec.time_axis, 5)
-		if self.shouldPlot:#Plotting takes a lot of time
+		
+		if self.shouldPlot[3]:#Plotting takes a lot of time
 			self.oS.append(self.timeStampS("Plotting raw Spectra"))
 			self.plot(spec.wave[pltI[0]:pltI[1]],spec.intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Emission Spectra "+spec.name)
-				
+		
+		if self.shouldPlot[4]:
 			self.oS.append(self.timeStampS("Plotting corrected spectra"))
 			self.plot(spec.wave[pltI[0]:pltI[1]],spec.sub_intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Corrected Spectra "+spec.name)  
-			
+		
+		if self.shouldPlot[5]:
 			self.oS.append(self.timeStampS("Plotting fluorescence over time"))
 			self.plot(spec.time_axis[tAi:],areas[tAi:],"time (s)","Fluorescence Intensity Arbitary Units","Fluorescence over time "+spec.name)
 
