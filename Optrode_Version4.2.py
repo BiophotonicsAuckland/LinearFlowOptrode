@@ -244,6 +244,8 @@ def Multi_Integration_Paradigm(Integration_list_MilSec, Integration_Buffer_Time,
         Pros_Power.terminate()
 
 def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, No_Power_Sample, No_BakGro_Spec):
+    DAQ1.writePort(Shutter_Port, 5)
+
     if (Power_meter.Error == 0):
         Pros_Power = Process(target=Power_Read_Process, args=(No_Power_Sample,))
         Pros_Power.start()
@@ -261,7 +263,6 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
         DAQ_Index[0] = DAQ_Index[0] + 1
 
     Pros_Spec.start()
-    DAQ1.writePort(Shutter_Port, 5)
 
     #Pros_DAQ = Process(target=DAQ_Read_Process, args=(No_DAC_Sample,))
     #Pros_DAQ.start()
@@ -277,7 +278,7 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
 
             Full_Spec_Records[:, np.int(Spec_Index[0]) - 1] = Current_Spec_Record[:]
         '''
-    DAQ1.writePort(Shutter_Port, 0)
+    ####DAQ1.writePort(Shutter_Port, 0)
 
     while (int(Spec_Index[0]) < No_Spec_Sample  ):
         '''
@@ -482,7 +483,6 @@ def Perform_Test():
         # Closing the devices
         Spec_Details = Spec1.readDetails()
         DAQ_Details = DAQ1.getDetails()
-        DAQ1.writePort(Shutter_Port, 0)
 
         # ########### The file containing the records (HDF5 format)###########
         #Path_to_Records = os.path.abspath(os.path.join( os.getcwd(), os.pardir)) + "/Records"
@@ -514,6 +514,7 @@ def Perform_Test():
             #Optrode_DAQ.attrs['PowerMeter Details'] = np.string_(DAQ_Details)
 
         f.close()
+	DAQ1.writePort(Shutter_Port, 0)
 
         Path_to_Fred_Codes = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
         os.chdir(Path_to_Fred_Codes)
@@ -603,16 +604,22 @@ def Close_GUI():
 	Closes alignment window if open, otherwise closes GUI.
 	'''
 
-	DAQ1.writePort(Green_Shutter, 0)
-	DAQ1.writePort(Blue_Shutter, 0)
-	if plt.fignum_exists(0):
-		plt.close(0)
-	else:
-		time.sleep(0.1)
-		DAQ1.close()
-		Spec1.close()
-		root.destroy()
+	try:
+		DAQ1.writePort(Green_Shutter, 0)
+		DAQ1.writePort(Blue_Shutter, 0)
+	
 
+		if plt.fignum_exists(0):
+			plt.close(0)
+		else:
+			time.sleep(0.1)
+			DAQ1.close()
+			Spec1.close()
+	except:
+		print("Failed to close devices properly, please replug them")
+	finally:
+		root.destroy()
+	
 def Help_GUI():
 	'''
 	Creates a help window if none exists.
