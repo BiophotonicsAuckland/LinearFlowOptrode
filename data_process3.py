@@ -2,6 +2,7 @@
 #@author: Liam Murphy
 import Tkinter as tk
 import tkFileDialog as filedialog
+import tkFont
 
 import h5py, bisect,cPickle,re
 import numpy as np
@@ -23,90 +24,92 @@ class App:
         root.title(self.WIN_TITLE)
         root.minsize(self.WIN_WIDTH,self.WIN_HEIGHT)
         
+	self.customFont = tkFont.Font(family="Arial", size=10,weight=tkFont.BOLD)
+	
         self.bg_sv = tk.StringVar()
         dir_entry = tk.Entry(root,state="readonly",textvariable=self.bg_sv,width=50)
-        dir_browse = tk.Button(text="Browse",command=lambda: self.getFile(self.bg_sv))
+        dir_browse = tk.Button(text="Browse",command=lambda: self.getFile(self.bg_sv),font=self.customFont)
 	
 	dat_scroll = tk.Scrollbar(root)
         self.dat_entry = tk.Listbox(root,state="normal",width=50,height=5,yscrollcommand=dat_scroll.set)
-        dat_browse= tk.Button(root,text="Browse",command=lambda: self.getFiles(self.dat_entry))
+        dat_browse= tk.Button(root,text="Browse",command=lambda: self.getFiles(self.dat_entry),font=self.customFont)
         
-        tk.Label(root, text="Background").grid(row=0,column=0,sticky=tk.W)
+        tk.Label(root, text="Background",font=self.customFont).grid(row=0,column=0,sticky=tk.W)
         dir_browse.grid(row=0,column=2,sticky=tk.E)
         dir_entry.grid(row=0,column=1)
         
-        tk.Label(root,text="Data Files").grid(row=1,column=0,sticky=tk.W)
-	dat_browse.grid(row=1,column=3,sticky=tk.E)
+        tk.Label(root,text="Data Files",font=self.customFont).grid(row=1,column=0,sticky=tk.W)
+	dat_browse.grid(row=1,column=2,sticky=tk.E)
         self.dat_entry.grid(row=1,column=1)
 	dat_scroll.grid(row=1,column=2,sticky=tk.W)
 	dat_scroll.config(command=self.dat_entry.yview)
 
         
-        tk.Label(root,text="Recording Length (s)").grid(row=3,column=0,sticky=tk.E)
+        tk.Label(root,text="Recording Length (s)",font=self.customFont).grid(row=3,column=0,sticky=tk.E)
         self.rl_sv = tk.StringVar(value="150")
         rec_entry = tk.Entry(root,textvariable=self.rl_sv,width=10)
         rec_entry.grid(row=3,column=1,sticky=tk.W)
         
-        tk.Label(root,text="Flow Rate (mL/s)").grid(row=3,column=2,sticky=tk.E)
+        tk.Label(root,text="Flow Rate (mL/s)",font=self.customFont).grid(row=3,column=1,sticky=tk.E)
         self.fr_sv = tk.StringVar(value=str(0.2/60.0))
         fr_entry = tk.Entry(root,textvariable=self.fr_sv,width=10)
-        fr_entry.grid(row=3,column=3,sticky=tk.W)
+        fr_entry.grid(row=3,column=2,sticky=tk.W)
 
-        tk.Label(root,text="Conc Val").grid(row=4,column=0,sticky=tk.E)
+        tk.Label(root,text="Conc Val",font=self.customFont).grid(row=4,column=0,sticky=tk.E)
         self.cv_sv = tk.StringVar(value="2.274")
         cv_entry = tk.Entry(root,textvariable=self.cv_sv,width=10)
         cv_entry.grid(row=4,column=1,sticky=tk.W)
 
-        tk.Label(root,text="Integration Time (s)").grid(row=4,column=2,sticky=tk.E)
+        tk.Label(root,text="Integration Time (s)",font=self.customFont).grid(row=4,column=1,sticky=tk.E)
         self.it_sv = tk.StringVar(value="0.05")
         it_entry = tk.Entry(root,textvariable=self.it_sv,width=10)
-        it_entry.grid(row=4,column=3,sticky=tk.W)
+        it_entry.grid(row=4,column=2,sticky=tk.W)
 
-        tk.Label(root,text="Integration Range ").grid(row=5,column=0,sticky=tk.E)
+        tk.Label(root,text="Integration Range ",font=self.customFont).grid(row=5,column=0,sticky=tk.E)
         self.ir_sv = tk.StringVar(value="495,550")
         ir_entry = tk.Entry(root,textvariable=self.ir_sv,width=10)
         ir_entry.grid(row=5,column=1,sticky=tk.W)
         
-        tk.Label(root,text="Plot Range").grid(row=5,column=2,sticky=tk.E)
+        tk.Label(root,text="Plot Range",font=self.customFont).grid(row=5,column=1,sticky=tk.E)
         self.pr_sv = tk.StringVar(value="450,650")
         pr_entry = tk.Entry(root,textvariable=self.pr_sv,width=10)
-        pr_entry.grid(row=5,column=3,sticky=tk.W)
+        pr_entry.grid(row=5,column=2,sticky=tk.W)
 
-	tk.Label(root, text="Plot Selection").grid(row=6,column=1)
+	tk.Label(root, text="Plot Selection",font=self.customFont).grid(row=6,column=1)
 
 	self.toPlot = tk.IntVar()
-        plotCheck = tk.Checkbutton(root,text="Plot All (This takes longer)",variable=self.toPlot, command=self.checkAll)
+        plotCheck = tk.Checkbutton(root,text="Plot All (This takes longer)",font=self.customFont,variable=self.toPlot, command=self.checkAll)
         plotCheck.grid(row=8,column=1)
 	
 	self.toPlotBac = tk.IntVar()
-	plotBacCheck = tk.Checkbutton(root,text="Background Spectra",variable=self.toPlotBac)
+	plotBacCheck = tk.Checkbutton(root,text="Background Spectra",font=self.customFont,variable=self.toPlotBac)
 	plotBacCheck.grid(row=9, column =0)
 	
 	self.toPlotRaw = tk.IntVar()
-	plotRawCheck = tk.Checkbutton(root,text="Raw Spectra",variable=self.toPlotRaw)
-	plotRawCheck.grid(row=9,column=2)
+	plotRawCheck = tk.Checkbutton(root,text="Raw Spectra",variable=self.toPlotRaw,font=self.customFont)
+	plotRawCheck.grid(row=10,column=0)
 
 	self.toPlotCor = tk.IntVar()
-	plotCorCheck = tk.Checkbutton(root,text="Corrected Spectra", variable = self.toPlotCor)
-	plotCorCheck.grid(row=9,column=3)
+	plotCorCheck = tk.Checkbutton(root,text="Corrected Spectra", variable = self.toPlotCor,font=self.customFont)
+	plotCorCheck.grid(row=10,column=1)
 
 	self.toPlotRes = tk.IntVar()
-	plotResCheck = tk.Checkbutton(root,text="Residual Spectra", variable = self.toPlotRes)
+	plotResCheck = tk.Checkbutton(root,text="Residual Spectra", variable = self.toPlotRes,font=self.customFont)
 	plotResCheck.grid(row=9, column =1)
 
 	self.toPlotTim = tk.IntVar()
-	plotTimCheck = tk.Checkbutton(root,text="Sig vs Time", variable =self.toPlotTim)
-	plotTimCheck.grid(row=9,column=4)	
+	plotTimCheck = tk.Checkbutton(root,text="Sig vs Time", variable =self.toPlotTim,font=self.customFont)
+	plotTimCheck.grid(row=10,column=2)	
 	
 	self.checkButList = [plotTimCheck,plotCorCheck,plotRawCheck,plotBacCheck,plotResCheck]
 
-        self.st_button = tk.Button(root, text="start",command=self.startProcess)
-        self.st_button.grid(row=10)
+        self.st_button = tk.Button(root, text="start",command=self.startProcess,font=self.customFont)
+        self.st_button.grid(row=11)
 	
 	out_scroll = tk.Scrollbar(root)
-	out_scroll.grid(row=11,column=4)
+	out_scroll.grid(row=12,column=4)
         self.outputText = tk.Text(root,yscrollcommand=out_scroll.set)
-        self.outputText.grid(row=11,columnspan=3)
+        self.outputText.grid(row=12,columnspan=3)
 	out_scroll.config(command=self.outputText.yview)
 
 
@@ -273,15 +276,14 @@ class analysis():
     
     def plot(self,x,y,xl,yl,title):
 		"""Plots the parsed data, may want to move this func outside of spectra class"""
-		if title =="Corrected Spectrdddda p10to7-15.hdf5": #change this string to what ever file you want to have special plot properties
+		if "Corrected Spectra" in title or "Residual" in title:#Residual Background spectra flush-6.hdf5": #change this string to what ever file you want to have special plot properties
 			plt.clf()
 			plt.grid()
 			plt.xlabel(xl)
 			plt.ylabel(yl)
 			plt.title(title)
-			plt.ylim(-20,60)
 			print("customset")
-			plt.plot(x,y)	
+			plt.plot(x,y.T[1:].T)	
 			plt.savefig(self.DIRECTORY+title+".png",format="png")#may want to move this function call separately.
 
 		else:
@@ -314,13 +316,13 @@ class analysis():
 	back = backgroundSpectra(self.BACKGROUND_FILENAME,self.DIRECTORY,self.INT_TIME,self.oS)
 	
 	if self.shouldPlot[1]:#Plotting background spec
-		self.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra ")
+		self.plot(back.wave,back.avg_intense,"Wavelength (nm)","Intensity (au)","Background spectra "+back.name)
 	else:
 		self.oS.append("Skipping background plot")
 
 	if self.shouldPlot[2]:#plotting residual back
 		back.subtract()
-		self.plot(back.wave,back.sub_intense,"Wavelength (nm)","Intesntiy (AU)","Residual Background spectra")
+		self.plot(back.wave,back.sub_intense,"Wavelength (nm)","Intesntiy (AU)","Residual Background spectra "+back.name)
 	else:
 		self.oS.append("Skipping residual background plot")
 		
@@ -355,6 +357,7 @@ class analysis():
 		tAi = bisect.bisect(spec.time_axis, 5)
 		
 		if self.shouldPlot[3]:#Plotting takes a lot of time
+			
 			self.oS.append(self.timeStampS("Plotting raw Spectra"))
 			self.plot(spec.wave[pltI[0]:pltI[1]],spec.intense[pltI[0]:pltI[1]],"Wavelength (nm)","Intensity (arb.u)","Emission Spectra "+spec.name)
 		
