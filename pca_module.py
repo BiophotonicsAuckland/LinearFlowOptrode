@@ -1,9 +1,8 @@
 import numpy as np
 from sklearn.decomposition import PCA
-import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import scale
-import os, random
+import random
 
 def colors(n):
     ret = []

@@ -1,6 +1,6 @@
 #/usr/bin/env python
 #@author: Liam Murphy
-import sys
+import h5py, bisect,re, threading,sys,pca_module
 if sys.version_info[0] ==2:
     import Tkinter as tk
     import tkFileDialog as filedialog
@@ -9,15 +9,14 @@ elif sys.version_info[0]==3:
     import tkinter as tk
     from tkinter import filedialog
     import tkinter.font as tkFont
+else:
+    print("Please use python 2 or 3 for tkinter support")
+    
 
-import h5py, bisect,re
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import simps
 from time import gmtime, strftime
-import threading 
-
-import pca_module
 
 
 class App:
