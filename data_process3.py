@@ -1,8 +1,14 @@
 #/usr/bin/env python
 #@author: Liam Murphy
-import Tkinter as tk
-import tkFileDialog as filedialog
-import tkFont
+import sys
+if sys.version_info[0] ==2:
+    import Tkinter as tk
+    import tkFileDialog as filedialog
+    import tkFont
+elif sys.version_info[0]==3:
+    import tkinter as tk
+    from tkinter import filedialog
+    import tkinter.font as tkFont
 
 import h5py, bisect,re
 import numpy as np
@@ -149,8 +155,8 @@ class App:
         directory = bgFileName[0:bgFileName.rindex("/")+1]#Grab directory from the background file location
         dataFiles = self.dat_entry.get(0,tk.END)#List of all data files
     
-        intRange= map(lambda x: float(x), self.ir_sv.get().split(","))
-        plotRange = map(lambda x: float(x), self.pr_sv.get().split(","))
+        intRange= list(map(lambda x: float(x), self.ir_sv.get().split(",")))
+        plotRange = list(map(lambda x: float(x), self.pr_sv.get().split(",")))
         intTime = float(self.it_sv.get())
         flowRate = float(self.fr_sv.get())
         recLen  = float(self.rl_sv.get())
@@ -336,6 +342,7 @@ class analysis():
         self.oS.append(self.timeStampS("Loaded data files"+"\n--------------\n\n"))
         
         for spec in specList:#Plotting and computation calls here
+            
             pltI = (bisect.bisect(spec.wave,self.PLOT_RANGE[0]),bisect.bisect(spec.wave,self.PLOT_RANGE[1]))
     
             self.oS.append(self.timeStampS("Beginning with "+spec.name))
