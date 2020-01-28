@@ -19,7 +19,7 @@ class Spectrometer:
         time.sleep(0.01)
         Spec_Init_Done.value = 1
 
-    def Spec_Speed_Test(self, No_Spec_Tests):
+    def Spec_Speed_Test(self, no_spec_tests):
         '''
         A function for testing the spectrometer speed in free running mode
         '''
@@ -30,15 +30,15 @@ class Spectrometer:
         Threshold = 1.2
         while True:
             Start_Time = time.time()
-            Spec_Read_Process(No_Spec_Tests)
+            Spec_Read_Process(no_spec_tests)
             Spec_Index[0] = 0
             '''
-            while I < No_Spec_Tests:
+            while I < no_spec_tests:
                 Scratch_Signal, Mean_Time = self.spec.readIntensity(True, True)
                 I = I + 1
             '''
             Duration = (time.time() - Start_Time)*1000
-            Mean_Time = Duration/float(No_Spec_Tests)
+            Mean_Time = Duration/float(no_spec_tests)
             if (Mean_Time < Threshold*float(Test_Integration_Time)):
                 print ('Finished. Duration: %f' %Duration)
                 print ('Mean time %f' %Mean_Time)
