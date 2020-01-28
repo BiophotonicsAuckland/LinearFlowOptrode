@@ -7,32 +7,20 @@ Rewrite of originally spaghetti.
 
 import matplotlib, socket, subprocess,struct, os, sys,tempfile, glob,datetime,time, bisect,os.path,h5py
 from multiprocessing import Process, Value, Array
-import tkinter as tk
-#from ttk import Button, Style, Label, Entry, Notebook, Scale
-from tkinter.filedialog import askopenfilename
 from PIL import Image, ImageTk
-
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
+import tkinter as tk
 from GUI import View
-#%%
+
 time_start =  time.time()
 
-# ######################### Naming the DAQ ports ##########################
-# FIO0 = shutter of the green laser and FIO1 is the shutter of the blue laser
-# FIO2 = is the green laser and the FIO3 is the blue laser
-Blue_Laser = "FIO1"
-Blue_Shutter = "DAC0"
-Green_Laser = "FIO0"
-Green_Shutter = "DAC1"
-
+BLUE_LASER = "FIO1"
+BLUE_SHUTTER = "DAC0"
 PhotoDiod_Port = "AIN1"
-#Spectrometer_Trigger_Port = "DAC1"
 
 def Timer_Multi_Process(Time_In_Seconds):
     '''
@@ -176,7 +164,6 @@ def Perform_Test():
     if not os.path.exists(Path_to_Records):
         os.makedirs(Path_to_Records)
 
-    DAQ1.writePort(Green_Shutter, 0)
     DAQ1.writePort(Blue_Shutter, 0)
 
     # Initializing the variables
@@ -236,8 +223,8 @@ def Perform_Test():
 
 
 
-    if (par_mode.get() == 'c'):           # Continious paradigm
-        No_Spec_Sample =  int(round(float(DurationOfReading)/float(float(Integration_Continious))))  # Number of samples for spectrometer to read.
+
+    No_Spec_Sample =  int(round(float(DurationOfReading)/float(float(Integration_Continious))))  # Number of samples for spectrometer to read.
                                 # Number of samples for spectrometer to read.
 
     Rerun = 'First'
@@ -317,68 +304,6 @@ def Perform_Test():
         Path_to_Fred_Codes = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
         os.chdir(Path_to_Fred_Codes)
 
-        # Plotting the spectrumeter and the photodiod recordings ########
-        if plots[0].get() == 1:
-            plt.figure()
-            plt.plot(np.asarray(DAQ_Time[0:DAQ_Index[0]]) - DAQ_Time[0], np.asanyarray(DAQ_Signal[0:DAQ_Index[0]]))
-            plt.title('Photo diode')
-            plt.xlabel('Ellapsed time (s)')
-            plt.ylabel('Voltage (v)')
-
-
-        '''
-        plt.figure()
-        plt.plot(Spec1.readWavelength()[2:],Full_Spec_Records[2:])
-        plt.title('Specrometer recordings')
-        plt.xlabel('Wavelength (nano meter)')
-        plt.ylabel('Intensity')
-        #plt.plot(np.asarray(Ref_Time[0:DAQ_Index[0]]) - DAQ_Time[0],Ref_Signal[0:DAQ_Index[0]])
-        '''
-
-        # Estimate the latencies of the devices ###################################
-        if plots[1].get() == 1:
-            plt.figure()
-            plt.subplot(1,2,1)
-            DAQ_Latency = np.asanyarray(DAQ_Time[0:DAQ_Index[0]])
-            DAQ_Latency[0] = 0
-            for I in range(1,DAQ_Index[0]):
-                DAQ_Latency[I] = DAQ_Time[I] - DAQ_Time[I-1]
-            #plt.subplot(1,3,1)
-            plt.plot(DAQ_Latency)
-            plt.ylabel("Time (s)")
-            plt.title("DAQ latencies")
-            plt.show()
-
-            plt.subplot(1,2,2)
-            Spec_Latency = np.asarray(Spec_Time[0:np.int(Spec_Index[0])])
-            Spec_Latency[0] = 0
-            for I in range(1,Spec_Index[0]):
-                Spec_Latency[I] = np.float(Spec_Time[I] - Spec_Time[I-1])
-            plt.plot(Spec_Latency[1:])
-
-            plt.ylabel("Time (s)")
-            plt.title("Spectrometer integration durations")
-            plt.show()
-
-        if plots[2].get() == 1 and Power_meter.Error == 0:
-            plt.figure()
-            plt.subplot(1,2,1)
-            Power_Latency = np.asanyarray(Power_Time[0:Power_Index[0]])
-            Power_Latency[0] = 0
-            for I in range(1,int(Power_Index[0])):
-                Power_Latency[I] = Power_Time[I] - Power_Time[I-1]
-            #plt.subplot(1,3,1)
-            plt.plot(Power_Latency)
-            plt.ylabel("Time (s)")
-            plt.title("Power latencies")
-            plt.show()
-            plt.subplot(1,2,2)
-            plt.plot(np.asarray(Power_Time[0:Power_Index[0]]) - Power_Time[0], np.asanyarray(Power_Signal[0:Power_Index[0]]))
-            plt.title('Power Meter')
-            plt.xlabel('Ellapsed time (s)')
-            plt.ylabel('Power (w)')
-            plt.show()
-
         print('\n')
         print('Data is saved. \n')
 
@@ -397,14 +322,6 @@ def Perform_Test():
             debug(" ")
             break
 
-
-def debug(msg):
-    print(msg)
-    error_msg.set(msg)
-
-def stop_animation(event):
-    anim.event_source.stop()
-
 def is_number(s):
     try:
         float(s)
@@ -412,15 +329,9 @@ def is_number(s):
     except ValueError:
         return False
 
-        
-def close(root, DAQ, Spec):
+def close(root, DAQ1, Spec1):
     try:
-        
-
-        if plt.fignum_exists(0):
-            plt.close(0)
-        else:
-            time.sleep(0.1)
+  
             DAQ1.close()
             Spec1.close()
     except:
@@ -428,23 +339,98 @@ def close(root, DAQ, Spec):
     finally:
         root.destroy()
 
+class Observable:
+    def __init__(self, initial_value=None):
+        self.data = initial_value
+        self.callbacks = {}
+
+    def add_callback(self, func):
+        self.callbacks[func] = 1
+
+    def del_callback(self, func):
+        del self.callback[func]
+
+    def _do_callbacks(self):
+        for func in self.callbacks:
+             func(self.data)
+
+    def set(self, data):
+        self.data = data
+        self._do_callbacks()
+
+    def get(self):
+        return self.data
+
+    def unset(self):
+        self.data = None
+        
+class Model:
+
+    def __init__(self):
+    
+        self.settings = {
+            "directory": Observable(),
+            "filename": Observable(),
+            "bool_suffix": Observable(),
+            "int_time": Observable(),
+            "rec_time": Observable(),
+            "min_wav" : Observable(),
+            "max_wav" : Observable()
+        }
+        self.status = Observable("")
+        spec = Spectrometer()
+        daq = DAQ()
+    
+    def setup_test(self):
+        self.status.set("Setting Up...")
+        
+    def start_test(self):
+        self.status.set("Starting Test...")
+        daq.device.writePort(BLUE_SHUTTER, 5)
+        spectrum_data = Array('d', np.zeros(shape=( len(Wavelengths)*No_Spec_Tests ,1), dtype = float ))
+        
+class Controller:
+
+    def __init__(self, root):
+        self.model = Model()
+        self.model.status.add_callback(self.set_message)
+        self.view = View(root)
+        self.view.but_setup.config(command=self.setup_test)
+        self.view.but_start.config(command=self.start_test)
+        
+    def set_message(self, msg):
+        self.view.error_msg.set(msg)
+
+        
+    def get_settings(self):
+        return
+            {
+                "directory": self.view.directory.get(),
+                "filename": self.view.filename.get(),
+                "bool_suffix": self.view.is_suff.get(),
+                "int_time": self.view.int_time.get(),
+                "rec_time": self.view.rec_time.get(),
+                "min_wav" : self.view.min_len.get(),
+                "max_wav" : self.view.max_len.get()
+            }
+        
+    def setup_test(self):
+        #Get UI values, set observables in the model
+        view_settings = self.get_settings()
+        
+        for key, val in self.settings:
+            val.set(view_settings[key])
+            
+        #Disable UI
+        self.view.disable_ui()
+        
+        #call models setup
+        #prepare for start
+        
+    def start_test(self):
+        pass
+        
 if __name__ == "__main__":
-    #spec = Spectrometer()
-    #daq = DAQ()
-    
-    
     root = tk.Tk()
-    gui = View(root)
+    con = Controller(root)
     root.mainloop()
-    
-    """
-The MVC Design pattern
-The model knows nothing about the view or the controller. Basically a resource that is consumed?
-The view knows nothing about the controller or the model. Basically a Listing of GUI elements, no logic.
-The controller understands both the model and the view
-
-The model uses observables, when important data is changed any interested listener gets notified through a callback mechanism.
-
-For this example The controller monitors any changes in the model, if the controller notices youc clicked and mofiied    
-    
-    """

@@ -12,23 +12,15 @@ class View:
         self.root.grid_columnconfigure(0, weight=1)
 
         # Setting variables
-        directory = tk.StringVar(value="")
-        filename = tk.StringVar(value="")      # Filename of output data
-        is_suff = tk.IntVar(value=0)           # 0 or 1 depending on whether or not to add a suffix to filename
-        int_time = tk.StringVar(value="50")    # Integration time of spectrometer (ms)
-        rec_time = tk.StringVar(value="90")    # Recording duration of spectrometer (s)
-        min_len = tk.StringVar(value="450")    # Minimum wavelength to record (nm)
-        max_len = tk.StringVar(value="650")    # Maximum wavelength to record (nm)
-        par_mode = tk.StringVar(value="c")     # Paradigm mode ('c' or 'm')
+        self.directory = tk.StringVar(value="")
+        self.filename = tk.StringVar(value="")      # Filename of output data
+        self.is_suff = tk.IntVar(value=0)           # 0 or 1 depending on whether or not to add a suffix to filename
+        self.int_time = tk.StringVar(value="50")    # Integration time of spectrometer (ms)
+        self.rec_time = tk.StringVar(value="90")    # Recording duration of spectrometer (s)
+        self.min_len = tk.StringVar(value="450")    # Minimum wavelength to record (nm)
+        self.max_len = tk.StringVar(value="650")    # Maximum wavelength to record (nm)
 
-
-        no_of_plots = 3
-        plots = []                          # Booleans on whether or not to plot each plot after collecting data
-        for i in range(no_of_plots):
-            plots.append(tk.IntVar())
-
-
-        error_msg = tk.StringVar(value=" ")    # Variable that stores the error message displayed on GUI
+        self.error_msg = tk.StringVar(value=" ")    # Variable that stores the error message displayed on GUI
         wait_var = tk.IntVar(value=0)          # Variable used to keep GUI waiting for user input during tests
 
         self.root.help_window = None
@@ -52,66 +44,63 @@ class View:
         rowrd = 4   # Recording duration row
         rowit = 5   # Integration time row
         rowwr = 6   # Wavelength range row
-
-        
+  
         fnlbl = tk.Label(frame2, text="Directory", font=(None, 11))
         fnlbl.grid(row=rowdir, column=1, padx=6, pady=(6,0), sticky=tk.W)
-        fntxt = tk.Entry(frame2, textvariable=directory, width=large_entry+8)
+        fntxt = tk.Entry(frame2, textvariable=self.directory, width=large_entry+8)
         fntxt.grid(row=rowdir, column=2, pady=(6,0), columnspan=3, sticky=tk.W)
-        dir_browse = tk.Button(frame2, text="Browse",command=lambda: self.getDir(directory))
+        dir_browse = tk.Button(frame2, text="Browse",command=lambda: self.get_dir(self.directory))
         dir_browse.grid(row=rowdir,column=4, padx=6, pady=(6,0), sticky=tk.E)
         
         fnlbl = tk.Label(frame2, text="Filename", font=(None, 11))
         fnlbl.grid(row=rowfn, column=1, padx=6, pady=(6,0), sticky=tk.W)
-        fntxt = tk.Entry(frame2, textvariable=filename, width=large_entry+8)
+        fntxt = tk.Entry(frame2, textvariable=self.filename, width=large_entry+8)
         fntxt.grid(row=rowfn, column=2, padx=6, pady=(6,0), columnspan=3)
 
         sulbl = tk.Label(frame2, text="Add Date Time Suffix", font=(None, 11))
         sulbl.grid(row=rowsu, column=1, padx=9, pady=6, sticky=tk.E)
-        fntxt = tk.Checkbutton(frame2, variable=is_suff)
+        fntxt = tk.Checkbutton(frame2, variable=self.is_suff)
         fntxt.grid(row=rowsu, column=2, padx=0, pady=6, sticky=tk.W)
 
         rdlbl = tk.Label(frame2, text="Recording duration (s)", font=(None, 11))
         rdlbl.grid(row=rowrd, column=1, padx=6, pady=6, sticky=tk.E)
-        rdtxt = tk.Entry(frame2, textvariable=rec_time, width=large_entry)
+        rdtxt = tk.Entry(frame2, textvariable=self.rec_time, width=large_entry)
         rdtxt.grid(row=rowrd, column=2, padx=6, pady=6, columnspan=3)
 
         itlbl = tk.Label(frame2, text="Integration time (ms)", font=(None, 11))
         itlbl.grid(row=rowit, column=1, padx=6, pady=6, sticky=tk.E)
-        ittxt = tk.Entry(frame2, textvariable=int_time, width=large_entry)
+        ittxt = tk.Entry(frame2, textvariable=self.int_time, width=large_entry)
         ittxt.grid(row=rowit, column=2, padx=6, pady=6, columnspan=3)
 
         wrlbl = tk.Label(frame2, text="Wavelength range (nm)", font=(None, 11))
         wrlbl.grid(row=rowwr, column=1, padx=6, pady=6, sticky=tk.E)
-        wrtxt = tk.Entry(frame2, textvariable=min_len, width=small_entry)
+        wrtxt = tk.Entry(frame2, textvariable=self.min_len, width=small_entry)
         wrtxt.grid(row=rowwr, column=2, padx=6, pady=6, sticky=tk.W)
         wrlbl = tk.Label(frame2, text="to", font=(None, 11))
         wrlbl.grid(row=rowwr, column=3, padx=0, pady=6)
-        wrtxt = tk.Entry(frame2, textvariable=max_len, width=small_entry)
+        wrtxt = tk.Entry(frame2, textvariable=self.max_len, width=small_entry)
         wrtxt.grid(row=rowwr, column=4, padx=6, pady=6, sticky=tk.E)
 
         # tk.Frame for checkbox frames
         framech = tk.Frame(self.root, relief=tk.RAISED, borderwidth=1)
     
         # Error message
-        erlbl = tk.Message(framech, width=360, textvariable=error_msg, font=(None, 11))
+        erlbl = tk.Message(framech, width=360, textvariable=self.error_msg, font=(None, 11))
         erlbl.grid(row=2, column=1, columnspan=3)
 
         # tk.Button frames
         frame6 = tk.Frame(self.root)
         frame6.grid(row=3, column=0)
 
-        but_setup = tk.Button(frame6, text="Setup Test")
-        but_setup.grid(row=1, column=1, padx=10, pady=10)
-        but_start = tk.Button(frame6, text="Start Test", state=tk.DISABLED)
-        but_start.grid(row=1, column=2, padx=10, pady=10)
+        self.but_setup = tk.Button(frame6, text="Setup Test")
+        self.but_setup.grid(row=1, column=1, padx=10, pady=10)
+        self.but_start = tk.Button(frame6, text="Start Test", state=tk.DISABLED)
+        self.but_start.grid(row=1, column=2, padx=10, pady=10)
 
-        but_help = tk.Button(frame6, text="Help", command=self.Help)
+        but_help = tk.Button(frame6, text="Help", command=self.help)
         but_help.grid(row=4, column=1, padx=10, pady=10)
 
-
-	
-    def Help(self):
+    def help(self):
         '''
         Creates a help window if none exists.
         '''
@@ -132,9 +121,7 @@ class View:
         else:
             self.root.help_window.focus_set()
             
-            
-            
-    def Disable_UI(self, parent, disable=True):
+    def disable_ui(self, parent, disable=True):
         '''
         Disables non-button UI. Functions recursively.
         '''
@@ -143,13 +130,13 @@ class View:
                 if disable == True:
                     w.config(state=tk.DISABLED)
                 else:
-                    w.config(state=NORMAL)
+                    w.config(state=tk.NORMAL)
             else:
-                Disable_UI(w, disable)
+                self.disable_ui(w, disable)
                 
-    def getDir(self, sv):
-            """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""
-            directory = tkFileDialog.askdirectory()
-            #print(filename)
-            if directory:
-                sv.set(directory)
+    def get_dir(self, sv):
+        """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""
+        directory = tkFileDialog.askdirectory()
+        #print(filename)
+        if directory:
+            sv.set(directory)
