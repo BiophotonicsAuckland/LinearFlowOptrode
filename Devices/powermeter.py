@@ -1,5 +1,5 @@
 #PowerMeter.py
-import req.ThorlabsPM100_Objective as P100
+import Devices.req.ThorlabsPM100_Objective as P100
 
 class PM:
 

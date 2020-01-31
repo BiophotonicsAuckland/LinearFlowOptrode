@@ -90,7 +90,7 @@ class DetectSpectrometer:
                 return         
             else:
                 self.detect()
-        except Exception, e:
+        except Exception as e:
             if (e.message == 'This should not have happened. Apparently this device has 0 serial number features. The code expects it to have 1 and only 1. Please file a bug report including a description of your device.'):
                 #print ('Please unplug the spectrometer and then plug again. Then close the python command line and reopen it. Last')
                 print ('Unplug the spectrometer and then plug again, then close the python command line and reopen it.')
@@ -113,7 +113,7 @@ class DetectSpectrometer:
             self.clear()
             self.Error = 0
             return
-        except Exception, e:
+        except Exception as e:
             if  (e.message == 'Device already opened.'):
                 #print ('Device will be reseted')                        
                 #self.reset()

@@ -4,8 +4,13 @@
 Rewrite of originally spaghetti.
 
 """
+import sys, os
 
-import matplotlib, socket, subprocess,struct, os, sys,tempfile, glob,datetime,time, bisect,os.path,h5py
+    
+#import Devices.Spectrometer as Spectrometer
+#import Devices.DAQ as DAQ
+
+import matplotlib, socket, subprocess, struct, tempfile, glob, datetime, time, bisect, os.path, h5py
 from multiprocessing import Process, Value, Array
 from PIL import Image, ImageTk
 import numpy as np
@@ -82,58 +87,7 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
     if (Power_meter.Error == 0):
         Pros_Power.terminate()
 
-def Begin_Test():
-    '''
-    Test if parameters are appropriate, update UI and start the test.
-    '''
-    MIN_INT_TIME = Spec1.Handle.minimum_integration_time_micros/1000.0
-    MAX_INT_TIME = 2000
-    MIN_REC_TIME = 1
-    MAX_REC_TIME = 3600
-    MIN_WAVE_LEN = 100
-    MAX_WAVE_LEN = 10000
 
-    if Spec1.Error == 1:
-        debug("ERROR: Cession failed, could not detect spectrometer.")
-    elif DAQ1.Error == 1:
-        debug("ERROR: Cession failed, could not detect DAQ, try unplugging and plugging back in.")
-    elif not is_number(int_time.get()):
-        debug("ERROR: Integration duration is not a number.")
-    elif float(int_time.get()) < MIN_INT_TIME:
-        debug("ERROR: Integration duration is smaller than " + str(MIN_INT_TIME) + ".")
-    elif float(int_time.get()) > MAX_INT_TIME:
-        debug("ERROR: Integration duration is greater than " + str(MAX_INT_TIME) + ".")
-    elif not is_number(rec_time.get()):
-        debug("ERROR: Recording duration is not a number.")
-    elif float(int_time.get()) < MIN_REC_TIME:
-        debug("ERROR: Recording duration is smaller than " + str(MIN_REC_TIME) + ".")
-    elif float(int_time.get()) > MAX_REC_TIME:
-        debug("ERROR: Recording duration is greater than " + str(MAX_REC_TIME) + ".")
-    elif not is_number(min_len.get()):
-        debug("ERROR: Minimum wavelength is not a number.")
-    elif float(min_len.get()) < MIN_WAVE_LEN:
-        debug("ERROR: Minimum wavelength is smaller than " + str(MIN_WAVE_LEN) + ".")
-    elif float(min_len.get()) > MAX_WAVE_LEN:
-        debug("ERROR: Minimum wavelength is greater than " + str(MAX_WAVE_LEN) + ".")
-    elif not is_number(max_len.get()):
-        debug("ERROR: Maximum wavelength is not a number.")
-    elif float(min_len.get()) < MIN_WAVE_LEN:
-        debug("ERROR: Maximum wavelength is smaller than " + str(MIN_WAVE_LEN) + ".")
-    elif float(min_len.get()) > MAX_WAVE_LEN:
-        debug("ERROR: Maximum wavelength is greater than " + str(MAX_WAVE_LEN) + ".")
-    elif float(min_len.get()) >= float(max_len.get()):
-        debug("ERROR: Minimum wavelength is smaller than maximum wavelength.")
-    elif par_mode.get() != "c" and par_mode.get() != "m":
-        debug("ERROR: Invalid paradigm mode selected.")
-    elif shut_mode.get() != Green_Shutter and shut_mode.get() != Blue_Shutter:
-        debug("ERROR: Invalid shutter selected.")
-    else:
-
-        # If no errors, then start the test after 10ms, to allow UI time to update
-        debug("SETTING UP...")
-        but_setup.config(state=DISABLED)
-        Disable_UI(root)
-        root.after(10, Perform_Test)
 
 def Perform_Test():
     '''
@@ -363,10 +317,16 @@ class Observable:
 
     def unset(self):
         self.data = None
-        
+
+class DeviceIOError(Exception):
+    pass
+    
+class InvalidUserInput(Exception):
+    pass
+    
 class Model:
 
-    def __init__(self):
+    def __init__(self, view_settings):
     
         self.settings = {
             "directory": Observable(),
@@ -377,9 +337,15 @@ class Model:
             "min_wav" : Observable(),
             "max_wav" : Observable()
         }
+        
+
+        for key, val in view_settings.items():
+            self.settings[key].set(val)
+        
         self.status = Observable("")
-        spec = Spectrometer()
-        daq = DAQ()
+        #self.spec = Spectrometer()
+        #self.daq = DAQ()
+        
     
     def setup_test(self):
         self.status.set("Setting Up...")
@@ -389,41 +355,102 @@ class Model:
         daq.device.writePort(BLUE_SHUTTER, 5)
         spectrum_data = Array('d', np.zeros(shape=( len(Wavelengths)*No_Spec_Tests ,1), dtype = float ))
         
+    def validation(self):
+        '''
+        Test if parameters are appropriate, update UI and start the test.
+        '''
+        MIN_INT_TIME = 5#Spec1.Handle.minimum_integration_time_micros/1000.0   
+        MAX_INT_TIME = 2000
+        MIN_REC_TIME = 1
+        MAX_REC_TIME = 3600
+        MIN_WAVE_LEN = 100
+        MAX_WAVE_LEN = 10000
+
+        
+        if not is_number(self.settings["int_time"].get()):
+            raise InvalidUserInput("ERROR: Integration duration is not a number.")
+        elif float(self.settings["int_time"].get()) < MIN_INT_TIME:
+            raise InvalidUserInput("ERROR: Integration duration is smaller than " + str(MIN_INT_TIME) + ".")
+        elif float(self.settings["int_time"].get()) > MAX_INT_TIME:
+            raise InvalidUserInput("ERROR: Integration duration is greater than " + str(MAX_INT_TIME) + ".")
+        elif not is_number(self.settings["rec_time"].get()):
+            raise InvalidUserInput("ERROR: Recording duration is not a number.")
+        elif float(self.settings["int_time"].get()) < MIN_REC_TIME:
+            raise InvalidUserInput("ERROR: Recording duration is smaller than " + str(MIN_REC_TIME) + ".")
+        elif float(self.settings["int_time"].get()) > MAX_REC_TIME:
+            raise InvalidUserInput("ERROR: Recording duration is greater than " + str(MAX_REC_TIME) + ".")
+        elif not is_number(self.settings["min_wav"].get()):
+            raise InvalidUserInput("ERROR: Minimum wavelength is not a number.")
+        elif float(self.settings["min_wav"].get()) < MIN_WAVE_LEN:
+            raise InvalidUserInput("ERROR: Minimum wavelength is smaller than " + str(MIN_WAVE_LEN) + ".")
+        elif float(self.settings["min_wav"].get()) > MAX_WAVE_LEN:
+            raise InvalidUserInput("ERROR: Minimum wavelength is greater than " + str(MAX_WAVE_LEN) + ".")
+        elif not is_number(self.settings["max_wav"].get()):
+            raise InvalidUserInput("ERROR: Maximum wavelength is not a number.")
+        elif float(self.settings["min_wav"].get()) < MIN_WAVE_LEN:
+            raise InvalidUserInput("ERROR: Maximum wavelength is smaller than " + str(MIN_WAVE_LEN) + ".")
+        elif float(self.settings["min_wav"].get()) > MAX_WAVE_LEN:
+            raise InvalidUserInput("ERROR: Maximum wavelength is greater than " + str(MAX_WAVE_LEN) + ".")
+        elif float(self.settings["min_wav"].get()) >= float(self.settings["max_wav"].get()):
+            raise InvalidUserInput("ERROR: Minimum wavelength is smaller than maximum wavelength.")
+        elif self.settings["filename"].get() == "":
+            raise InvalidUserInput("ERROR: Please specify a filename")
+        
+        """
+        if self.spec.spec.Error == 1:
+            raise DeviceIOError("ERROR: Cession failed, could not detect spectrometer.")
+        elif DAQ1.Error == 1:
+            raise DeviceIOError("ERROR: Cession failed, could not detect DAQ, try unplugging and plugging back in.")
+        """
 class Controller:
 
     def __init__(self, root):
-        self.model = Model()
-        self.model.status.add_callback(self.set_message)
+        self.model = None
         self.view = View(root)
         self.view.but_setup.config(command=self.setup_test)
         self.view.but_start.config(command=self.start_test)
         
     def set_message(self, msg):
         self.view.error_msg.set(msg)
-
-        
+  
     def get_settings(self):
-        return
-            {
-                "directory": self.view.directory.get(),
-                "filename": self.view.filename.get(),
-                "bool_suffix": self.view.is_suff.get(),
-                "int_time": self.view.int_time.get(),
-                "rec_time": self.view.rec_time.get(),
-                "min_wav" : self.view.min_len.get(),
-                "max_wav" : self.view.max_len.get()
-            }
+        dict = {
+            "directory": self.view.directory.get(),
+            "filename": self.view.filename.get(),
+            "bool_suffix": self.view.is_suff.get(),
+            "int_time": self.view.int_time.get(),
+            "rec_time": self.view.rec_time.get(),
+            "min_wav" : self.view.min_len.get(),
+            "max_wav" : self.view.max_len.get()
+        }
+        
+        return dict
         
     def setup_test(self):
-        #Get UI values, set observables in the model
-        view_settings = self.get_settings()
+        #Instantiate the model
+        self.model = Model(self.get_settings())
+        self.model.status.add_callback(self.set_message)
         
-        for key, val in self.settings:
-            val.set(view_settings[key])
+        #Validate the input
+        try:
+            
+            self.model.validation()
+        except DeviceIOError as e:
+            self.set_message(e)#custom exception if spec or daq connection error and or paramter settings:
+            return
+            
+        except InvalidUserInput as e:
+            self.set_message(e)
+            return
+            
+        
+        
+        #Get UI values, set observables in the model
+        
             
         #Disable UI
-        self.view.disable_ui()
-        
+        self.view.toggle_ui()
+        model.setup_test()
         #call models setup
         #prepare for start
         

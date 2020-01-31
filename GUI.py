@@ -121,18 +121,19 @@ class View:
         else:
             self.root.help_window.focus_set()
             
-    def disable_ui(self, parent, disable=True):
+    def toggle_ui(self, disable=True):
         '''
         Disables non-button UI. Functions recursively.
         '''
-        for w in parent.winfo_children():
-            if w.winfo_class() == "TEntry" or w.winfo_class() == "tk.Radiobutton" or w.winfo_class() == "tk.Checkbutton":
+        
+        for w in self.root.winfo_children():
+            if w.winfo_class() == "TEntry" or w.winfo_class() == "tk.Checkbutton":
                 if disable == True:
                     w.config(state=tk.DISABLED)
                 else:
                     w.config(state=tk.NORMAL)
             else:
-                self.disable_ui(w, disable)
+                self.disable_ui(disable)
                 
     def get_dir(self, sv):
         """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""

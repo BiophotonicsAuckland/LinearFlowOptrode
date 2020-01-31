@@ -1,4 +1,4 @@
-import req.DAQT7_Objective as daq
+import Devices.req.DAQT7_Objective as daq
 
 class DAQ:
 

@@ -1,6 +1,6 @@
 """Develop edition, porting original code hopefully to python3, and making it less spaghetti"""
 
-import req.SeaBreeze_Objective as SBO
+import Devices.req.SeaBreeze_Objective as SBO
 
 class Spectrometer:
 
