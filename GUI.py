@@ -81,25 +81,21 @@ class View:
         wrtxt = tk.Entry(frame2, textvariable=self.max_len, width=small_entry)
         wrtxt.grid(row=rowwr, column=4, padx=6, pady=6, sticky=tk.E)
 
-        # tk.Frame for checkbox frames
-        framech = tk.Frame(self.root, relief=tk.RAISED, borderwidth=1)
-    
-        # Error message
-        erlbl = tk.Message(framech, width=360, textvariable=self.error_msg, font=(None, 11))
-        erlbl.grid(row=2, column=1, columnspan=3)
-
         # tk.Button frames
         frame6 = tk.Frame(self.root)
         frame6.grid(row=3, column=0)
 
-        self.but_setup = tk.Button(frame6, text="Setup Test")
-        self.but_setup.grid(row=1, column=1, padx=10, pady=10)
-        self.but_start = tk.Button(frame6, text="Start Test", state=tk.DISABLED)
-        self.but_start.grid(row=1, column=2, padx=10, pady=10)
+        self.but_start = tk.Button(frame6, text="Start Measurement")
+        self.but_start.grid(row=1, column=1, padx=10, pady=10)
+        self.but_abort = tk.Button(frame6, text="Start Test", state=tk.DISABLED)
+        self.but_abort.grid(row=1, column=2, padx=10, pady=10)
 
         but_help = tk.Button(frame6, text="Help", command=self.help)
         but_help.grid(row=4, column=1, padx=10, pady=10)
 
+        erlbl = tk.Message(frame6, width=360, textvariable=self.error_msg, font=(None, 11))
+        erlbl.grid(row=6, column=1, columnspan=3)
+        
     def help(self):
         '''
         Creates a help window if none exists.
@@ -121,20 +117,18 @@ class View:
         else:
             self.root.help_window.focus_set()
             
-    def toggle_ui(self, disable=True):
+    def toggle_ui(self, disable):
         '''
-        Disables non-button UI. Functions recursively.
+        Disables non-button UI. Functions recursively, true = on, false= off
         '''
-        
-        for w in self.root.winfo_children():
-            if w.winfo_class() == "TEntry" or w.winfo_class() == "tk.Checkbutton":
-                if disable == True:
-                    w.config(state=tk.DISABLED)
-                else:
-                    w.config(state=tk.NORMAL)
-            else:
-                self.disable_ui(disable)
+
+        for frame in self.root.winfo_children():
+            for child in frame.winfo_children():
+                if child.winfo_class() == "Entry" or child.winfo_class() == "Button" or child.winfo_class() == "Checkbutton":
+                    child.configure(state='disable')
                 
+            
+            
     def get_dir(self, sv):
         """Takes a string var object, and opens a file select dialog, changes text entry to chosen file"""
         directory = tkFileDialog.askdirectory()

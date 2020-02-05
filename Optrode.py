@@ -15,7 +15,7 @@ from multiprocessing import Process, Value, Array
 from PIL import Image, ImageTk
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
+#from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import matplotlib.animation as animation
 import tkinter as tk
@@ -44,12 +44,12 @@ def Continious_Paradigm(Integration_Continious, No_Spec_Sample, No_DAC_Sample, N
     if (Power_meter.Error == 0):
         Pros_Power = Process(target=Power_Read_Process, args=(No_Power_Sample,))
         Pros_Power.start()
-    #Local_Spec_Index = 0
-    Spec_Init_Done.value = 0
-    Pros_Spec_Init = Process(target = Spec_Init_Process, args=(Integration_Continious, 0))
-    Pros_Spec_Init.start()
+
     Spec_Is_Read.value = 0
-    Pros_Spec = Process(target=Spec_Read_Process, args=(No_Spec_Sample, ))
+    
+    
+    
+    
     Timer_Is_Over.value = 0
     P_Timer = Process(target=Timer_Multi_Process, args=(0.1,))
     P_Timer.start()
@@ -338,26 +338,87 @@ class Model:
             "max_wav" : Observable()
         }
         
-
         for key, val in view_settings.items():
             self.settings[key].set(val)
         
         self.status = Observable("")
-        #self.spec = Spectrometer()
-        #self.daq = DAQ()
+        self.spec = Spectrometer()
+        self.daq = DAQ()
         
-    
-    def setup_test(self):
-        self.status.set("Setting Up...")
         
     def start_test(self):
-        self.status.set("Starting Test...")
-        daq.device.writePort(BLUE_SHUTTER, 5)
-        spectrum_data = Array('d', np.zeros(shape=( len(Wavelengths)*No_Spec_Tests ,1), dtype = float ))
+        self.status.set("Setting Up...")
+        
+        self.spec.spec_init_process(self.settings["int_time"], 0)
+        
+        self.wavelengths = self.spec.spec.readWavelength()
+        min_wave_index = max(bisect.bisect(self.wavelengths, float(self.settings["min_wave"])-1), 0)
+        max_wave_index = bisect.bisect(self.wavelengths, float(self.settings["max_wave"]))
+        self.wavelengths = self.wavelengths[min_wave_index:max_wave_index]
+        
+        no_spec_samples = 1000*float(self.settings["rec_time"])/self.settings["int_time"]
+        spectrum_data = Array('d', np.zeros(shape=(len(no_spec_samples, self.wavelengths)), dtype= float))
+        spectrum_time_data = Array('d', np.zeros(shape=(no_spec_samples ,1), dtype = float ))
+        
+        daq_sampling_rate = 1 #Hz, temporary valuem should be determiend by daq speed test somehow
+        no_daq_samples = float(self.settings["rec_time"])*daq_sampling_rate
+        daq_data = Array('d', np.zeros(no_daq_samples), dtype= float))
+        daq_time = Array('d', np.zeros(no_daq_samples), dtype = float ))
+        
+        spec_read_process = Process(target=self.spec.spec_read_process, args=(no_spec_samples, min_wave_index, max_wave_index, spectrum_data, spectrum_time_data ))
+        daq_read_process = Process(target=self.daq.daq_read_process, args=(,))
+        
+        self.status.set("Measuring...")
+        self.daq.device.writePort(BLUE_SHUTTER, 5)
+
+        #start the two processes 
+        
+        
+        
+        #finishing code
+        self.daq.device.writePort(BLUE_SHUTTER, 0)
+        self.save_data(spectrum_data, spectrum_time_data, daq_data, daq_time)
+        self.status.set("Complete!")
+        
+    def abort_test(self):
+        self.status.set("Aborting Measurement...")
+        self.daq.device.writePort(BLUE_SHUTTER, 0)
+        
+           
+    def save_data(self, spec_dat, daq_dat):
+        os.chdir(self.settings["directory"])
+        
+        filename = self.settings["filename"]
+        if self.settings["bool_suffix"]:
+            filename_suffix = str('%s' %datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H-%M-%S'))
+            filename+= ('-' + filename_suffix)
+        
+        filename+=".hdf5"
+        f = h5py.File(filename, "w")
+
+        # Saving the recorded signals in HDF5 format
+        Optrode_DAQ = f.create_group('DAQT7')
+        f.create_dataset('DAQT7/PhotoDiode', data = np.asanyarray(DAQ_Signal[:]))
+        f.create_dataset('DAQT7/TimeIndex', data = np.asanyarray(DAQ_Time[:]))
+        Optrode_DAQ.attrs['DAQT7 Details'] = np.string_(DAQ_Details)
+
+        Optrode_Spectrometer = f.create_group('Spectrometer')
+        f.create_dataset('Spectrometer/Intensities', data = np.asanyarray(spec_dat))
+        f.create_dataset('Spectrometer/Time_Index', data = np.asanyarray(Spec_Time))
+        f.create_dataset('Spectrometer/WaveLength', data = np.asanyarray(Wavelengths))
+        Optrode_Spectrometer.attrs['Spectrometer Details'] = np.string_(Spec_Details)
+
+        if (Power_meter.Error == 0):
+            Optrode_Power = f.create_group('PM100_PowerMeter')
+            f.create_dataset('PM100_PowerMeter/Power', data = np.asanyarray(Power_Signal[:]))
+            f.create_dataset('PM100_PowerMeter/TimeIndex', data = np.asanyarray(Power_Time[:]))
+            #Optrode_DAQ.attrs['PowerMeter Details'] = np.string_(DAQ_Details)
+
+        f.close()
         
     def validation(self):
         '''
-        Test if parameters are appropriate, update UI and start the test.
+        Test if parameters are appropriate, raises error if not
         '''
         MIN_INT_TIME = 5#Spec1.Handle.minimum_integration_time_micros/1000.0   
         MAX_INT_TIME = 2000
@@ -407,8 +468,8 @@ class Controller:
     def __init__(self, root):
         self.model = None
         self.view = View(root)
-        self.view.but_setup.config(command=self.setup_test)
         self.view.but_start.config(command=self.start_test)
+        self.view.but_abort.config(command=self.abort_test)
         
     def set_message(self, msg):
         self.view.error_msg.set(msg)
@@ -426,7 +487,7 @@ class Controller:
         
         return dict
         
-    def setup_test(self):
+    def start_test(self):
         #Instantiate the model
         self.model = Model(self.get_settings())
         self.model.status.add_callback(self.set_message)
@@ -442,19 +503,14 @@ class Controller:
         except InvalidUserInput as e:
             self.set_message(e)
             return
-            
-        
-        
-        #Get UI values, set observables in the model
-        
-            
+           
+         
         #Disable UI
-        self.view.toggle_ui()
-        model.setup_test()
-        #call models setup
-        #prepare for start
+        self.view.toggle_ui(False)
+        self.model.start_test()
+
         
-    def start_test(self):
+    def abort_test(self):
         pass
         
 if __name__ == "__main__":

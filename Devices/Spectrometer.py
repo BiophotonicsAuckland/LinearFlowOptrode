@@ -5,25 +5,26 @@ import Devices.req.SeaBreeze_Objective as SBO
 class Spectrometer:
 
     def __init__(self):
-        self.spec = SBO.DetectSpectromter()
-        self.wavelengths = self.spec.readWavelength()
+        self.device = SBO.DetectSpectromter()
+        self.wavelengths = self.device.readWavelength()
     
-    def Spec_Init_Process(self, Integration_Time, Trigger_mode):
+    def spec_init_process(self, integration_time, trigger_mode):
         '''
         A function for initializing the spectrometer (integration time and triggering mode
         Integration_Time is given in milliseconds
         '''
-        self.spec.setTriggerMode(Trigger_mode)
+        self.device.setTriggerMode(trigger_mode)
         time.sleep(0.01) #verify if this is necessary
-        self.spec.setIntegrationTime(Integration_Time*1000)          # Conversting it to Microseconds
+        self.device.setIntegrationTime(integration_Time*1000)          # Conversting it to Microseconds
         time.sleep(0.01)
-        Spec_Init_Done.value = 1
 
-    def Spec_Speed_Test(self, no_spec_tests):
+
+    def spec_speed_test(self, no_spec_tests):
         '''
-        A function for testing the spectrometer speed in free running mode
+        A function for testing the spectrometer speed in free running mode, 
+        THIS FUNCTION HAS NOT BEEN REWRITTEN, WILL NOT WORK WITHOUT MODIFICATION
         '''
-        Test_Integration_Time = self.spec.Handle.minimum_integration_time_micros/float(1000)
+        Test_Integration_Time = self.device.Handle.minimum_integration_time_micros/float(1000)
         Spec_Init_Process(Test_Integration_Time, 0)
         Mean_Time = 0
         #I = 0
@@ -48,27 +49,22 @@ class Spectrometer:
                 print ('Mean time %f' %Mean_Time)
                 print ('Test_Integration_Time %f' %Test_Integration_Time)
                 print ('Duration: %f' %Duration)
-                Test_Integration_Time = Test_Integration_Time + self.spec.Handle.minimum_integration_time_micros/float(2000)
+                Test_Integration_Time = Test_Integration_Time + self.device.Handle.minimum_integration_time_micros/float(2000)
                 Spec_Init_Process(Test_Integration_Time, 0)
                 #I = 0
 
-        print ('Spectrometer minimum integration time is %f ms and the practical minimum integration time is %f ms \n' %(self.spec.Handle.minimum_integration_time_micros/float(1000), Test_Integration_Time))
+        print ('Spectrometer minimum integration time is %f ms and the practical minimum integration time is %f ms \n' %(self.device.Handle.minimum_integration_time_micros/float(1000), Test_Integration_Time))
 
         return Test_Integration_Time
 
-    def Spec_Read_Process(self, no_spec_sample, start_wavelength, end_wavelength):
+    def spec_read_process(self, no_spec_sample, min_wave_index, max_wave_index,  spec_data_array, spec_time_array):
         '''
-        Reads specified no. samples between a wavelength range, returns a 2D array.
+        Reads specified no. samples between a wavelength range
         '''
-        min_wave_index = max(bisect.bisect(self.wavelengths, float(start_wavelength)-1), 0)
-        max_wave_index = bisect.bisect(Wavelengths, float(end_wavelength))
-        wavelengths = self.wavelengths[min_wave_index : max_wave_index]
-        wave_len = len(wavelengths)
+
         records = np.zeros(shape=(wave_len, No_Spec_Sample ), dtype = float )
         
         for i in range(no_spec_sample):
-            a,b = self.spec.readIntensity(True, True)
-            records[Spec_Index[0]*Wave_len : (Spec_Index[0] + 1)*Wave_len] = a[Min_Wave_Index:Max_Wave_Index]
-            Spec_Time[Spec_Index[0]] = b
-            Spec_Index[0] = Spec_Index[0] + 1
-            Spec_Is_Read.value = 1
+            a,b = self.device.readIntensity(True, True)
+            spec_data_array[i,:] = a[min_wave_index:max_wave_index]
+            spec_time_array = b
