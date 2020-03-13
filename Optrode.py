@@ -7,8 +7,8 @@ Rewrite of originally spaghetti.
 import sys, os
 
     
-#import Devices.Spectrometer as Spectrometer
-#import Devices.DAQ as DAQ
+from Devices.Spectrometer import Spectrometer
+from Devices.DAQ import DAQ
 
 import matplotlib, socket, subprocess, struct, tempfile, glob, datetime, time, bisect, os.path, h5py
 from multiprocessing import Process, Value, Array
@@ -89,36 +89,52 @@ class Model:
         
         self.status = Observable("")
         self.spec = Spectrometer()
-        self.daq = DAQ()
+        self.daq = DAQ(BLUE_SHUTTER)
         
         
     def start_test(self):
+        
         self.status.set("Setting Up...")
         
-        self.spec.spec_init_process(self.settings["int_time"], 0)
+        self.spec.spec_init_process(self.settings["int_time"].get(), 0)
         
-        self.wavelengths = self.spec.spec.readWavelength()
-        min_wave_index = max(bisect.bisect(self.wavelengths, float(self.settings["min_wave"])-1), 0)
-        max_wave_index = bisect.bisect(self.wavelengths, float(self.settings["max_wave"]))
+        self.wavelengths = self.spec.device.readWavelength()
+        min_wave_index = max(bisect.bisect(self.wavelengths, float(self.settings["min_wav"].get())-1), 0)
+        max_wave_index = bisect.bisect(self.wavelengths, float(self.settings["max_wav"].get()))
         self.wavelengths = self.wavelengths[min_wave_index:max_wave_index]
         
-        no_spec_samples = 1000*float(self.settings["rec_time"])/self.settings["int_time"]
-        spectrum_data = Array('d', np.zeros(shape=(len(no_spec_samples, self.wavelengths)), dtype= float))
+        """
+            import ctypes as c
+            import numpy as np
+            import multiprocessing as mp
+
+            n, m = 2, 3
+            mp_arr = mp.Array(c.c_double, n*m) # shared, can be used from multiple processes
+            # then in each new process create a new numpy array using:
+            arr = np.frombuffer(mp_arr.get_obj()) # mp_arr and arr share the same memory
+            # make it two-dimensional
+            b = arr.reshape((n,m)) # b and arr share the same memory
+        """
+        #https://stackoverflow.com/questions/44704086/eoferror-ran-out-of-input-inside-a-class
+        
+        no_spec_samples = int(1000*float(self.settings["rec_time"].get())/float(self.settings["int_time"].get()))
+        spectrum_data = Array('d', np.zeros(shape=(no_spec_samples* len(self.wavelengths),1), dtype= float))
         spectrum_time_data = Array('d', np.zeros(shape=(no_spec_samples ,1), dtype = float ))
         
         daq_sampling_rate = 1 #Hz, temporary valuem should be determiend by daq speed test somehow
-        no_daq_samples = float(self.settings["rec_time"])*daq_sampling_rate
-        daq_data = Array('d', np.zeros(no_daq_samples), dtype= float))
-        daq_time = Array('d', np.zeros(no_daq_samples), dtype = float ))
+        no_daq_samples = int(float(self.settings["rec_time"].get())*daq_sampling_rate)
+        daq_data = Array('d', np.zeros(shape=(no_daq_samples,1), dtype= float))
+        daq_time = Array('d', np.zeros(shape=(no_daq_samples,1), dtype = float ))
         
         spec_read_process = Process(target=self.spec.spec_read_process, args=(no_spec_samples, min_wave_index, max_wave_index, spectrum_data, spectrum_time_data ))
-        daq_read_process = Process(target=self.daq.daq_read_process, args=(,))
+        daq_read_process = Process(target=self.daq.DAQ_Read_Process)
         
         self.status.set("Measuring...")
         self.daq.device.writePort(BLUE_SHUTTER, 5)
 
         #start the two processes 
-        
+        spec_read_process.start()
+        daq_read_process.start()
         
         
         #finishing code
@@ -126,12 +142,14 @@ class Model:
         self.save_data(spectrum_data, spectrum_time_data, daq_data, daq_time)
         self.status.set("Complete!")
         
+        #pass
+		
     def abort_test(self):
         self.status.set("Aborting Measurement...")
         self.daq.device.writePort(BLUE_SHUTTER, 0)
         
            
-    def save_data(self, spec_dat, daq_dat):
+    def save_data(self, spec_dat, spec_time, daq_dat,daq_time):
         os.chdir(self.settings["directory"])
         
         filename = self.settings["filename"]

@@ -3,7 +3,7 @@ import Devices.req.DAQT7_Objective as daq
 class DAQ:
 
     def __init__(self, shutter):
-        self.device = DAQ.DetectDAQT7()
+        self.device = daq.DetectDAQT7()
         self.shutter = shutter
         
     def DAQ_Read_Process(self, No_DAC_Sample):

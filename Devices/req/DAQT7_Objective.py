@@ -88,6 +88,7 @@ class DetectDAQT7:
         self.Handle = ljm
         self.Error = 0
         try:
+
             self.Handle.handle = self.Handle.open(self.Handle.constants.dtANY, self.Handle.constants.ctANY, "ANY")
             info = self.Handle.getHandleInfo(self.Handle.handle)
             print("Opened a LabJack with Device type: %i, Connection type: %i,\n" \
@@ -100,7 +101,7 @@ class DetectDAQT7:
             aValues = [199, 10, 1]
             self.Handle.eWriteNames(self.Handle.handle, numFrames, names, aValues)
             return
-        except Exception, e:
+        except Exception as e:
             print (e.message)
             print ('Failed to detect DAQ device. Please unplug the device and plug it again. \n')
             self.Error = 1

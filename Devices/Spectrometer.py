@@ -1,11 +1,12 @@
 """Develop edition, porting original code hopefully to python3, and making it less spaghetti"""
 
 import Devices.req.SeaBreeze_Objective as SBO
+import time
 
 class Spectrometer:
 
     def __init__(self):
-        self.device = SBO.DetectSpectromter()
+        self.device = SBO.DetectSpectrometer()
         self.wavelengths = self.device.readWavelength()
     
     def spec_init_process(self, integration_time, trigger_mode):
@@ -15,7 +16,7 @@ class Spectrometer:
         '''
         self.device.setTriggerMode(trigger_mode)
         time.sleep(0.01) #verify if this is necessary
-        self.device.setIntegrationTime(integration_Time*1000)          # Conversting it to Microseconds
+        self.device.setIntegrationTime(int(integration_time)*1000)       # Conversting it to Microseconds
         time.sleep(0.01)
 
 
